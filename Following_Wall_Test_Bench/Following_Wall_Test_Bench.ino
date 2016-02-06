@@ -2,6 +2,8 @@
 // Define global variables for the pins of the motors
 // top left wheel = a, top right wheel = b, bottom left wheel = c, bottom right wheel = d
 
+// Hi this is Steve "The Melon" Moyer
+
 // motor a
 #define A_RED_PIN 5
 #define A_WHITE_PIN 28
