@@ -1,5 +1,6 @@
 
-/* This code is the coneptualization of a navigation function that provides setpoints to a robot. 
+/* Github Yeh Yeh
+ *  This code is the coneptualization of a navigation function that provides setpoints to a robot. 
  * The robot uses these setpoints in conjuction with sonar and a PD controller 
  * to navigate directly to the given (X,Z) coordinate.
  * 
