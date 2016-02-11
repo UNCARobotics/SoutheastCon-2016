@@ -118,7 +118,7 @@ Side Leg   {6, 7, 0, 0, 0, 0, 0, 0};
 void setup() {
   
   lcd.begin(16, 2); // set up the LCD's number of columns and rows
-  lcd.print("IEEE TESTING");   // Print a message to the LCD.
+  lcd.print("IEEE TESTER");   // Print a message to the LCD.
   delay(2000);
   lcd.clear();
  
