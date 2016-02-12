@@ -35,12 +35,12 @@ float BaseSpeed = 0;
 
 struct Motors {   //Motor Values
   int Enable;     
-  int Direction;  //high = backwards
-  int Speed;      //High = forwards
+  int BackwardSpeed;  //high = backwards
+  int ForwardSpeed;      //High = forwards
   
   int enablePin;  //Motor Pins
-  int directionPin;
-  int speedPin;
+  int backwardSpeedPin;
+  int forwardSpeedPin;
 };
 
 //Motor initilization (Picture Below shows motor numbers);
@@ -124,8 +124,8 @@ void setup() {
  
   for(int i=0;i<4;i++){  //configure pin modes
     pinMode (Motor[i].enablePin, OUTPUT);
-    pinMode (Motor[i].directionPin, OUTPUT);
-    pinMode (Motor[i].speedPin, OUTPUT);  
+    pinMode (Motor[i].backwardSpeedPin, OUTPUT);
+    pinMode (Motor[i].forwardSpeedPin, OUTPUT);  
   }
 }
 
@@ -176,10 +176,10 @@ while (1){
     }
     
   // Sum all speed caculations in proper orintation for mecanum drive
-    Motor[0].Speed = Ns_Tfb + Ns_Tal - (Ns_R/numParameters);
-    Motor[1].Speed = Ns_Tfb - Ns_Tal - (Ns_R/numParameters);
-    Motor[2].Speed = Ns_Tfb - Ns_Tal + (Ns_R/numParameters);
-    Motor[3].Speed = Ns_Tfb + Ns_Tal + (Ns_R/numParameters);
+    Motor[0].ForwardSpeed = Ns_Tfb + Ns_Tal - (Ns_R/numParameters);
+    Motor[1].ForwardSpeed = Ns_Tfb - Ns_Tal - (Ns_R/numParameters);
+    Motor[2].ForwardSpeed = Ns_Tfb - Ns_Tal + (Ns_R/numParameters);
+    Motor[3].ForwardSpeed = Ns_Tfb + Ns_Tal + (Ns_R/numParameters);
     
  // Exit condition
     if((abs(Ns_Tfb) + abs(Ns_Tal) + abs(Ns_R/numParameters)) <=20){
@@ -190,20 +190,20 @@ while (1){
   
   // if given a final negative speed, make the final speed positive and reverse the wheel direction for each motor
     for(int i=0;i<4;i++){
-      if (Motor[i].Speed < 0) {
-        Motor[i].Direction = -Motor[i].Speed;
-        Motor[i].Speed = 0;
+      if (Motor[i].ForwardSpeed < 0) {
+        Motor[i].BackwardSpeed = -Motor[i].ForwardSpeed;
+        Motor[i].ForwardSpeed = 0;
       }
       else {
-        Motor[i].Direction = LOW;
+        Motor[i].BackwardSpeed = LOW;
       }
     }
   
     // constrain the speeds of the motors to a value in between 0 and 255, the faster the motor can go is 255
     // if the speed is < 0 it gets set as 0, if the speed is > 255 it gets set as 255
     for(int i=0;i<4;i++){
-      Motor[i].Speed = constrain(Motor[i].Speed,0,255);
-      Motor[i].Direction = constrain(Motor[i].Direction,0,255);
+      Motor[i].ForwardSpeed = constrain(Motor[i].ForwardSpeed,0,255);
+      Motor[i].BackwardSpeed = constrain(Motor[i].BackwardSpeed,0,255);
     }
     printReadings(); //print the Sonar readings to the LCD screen
     setDrive(); //everything so far stored motor change data, now tell the motors to use that data
@@ -215,8 +215,8 @@ while (1){
 void setDrive(){
   for(int i=0;i<4;i++){
      digitalWrite(Motor[i].enablePin, HIGH);
-    digitalWrite(Motor[i].directionPin, Motor[i].Direction);
-    digitalWrite(Motor[i].speedPin, Motor[i].Speed); 
+    digitalWrite(Motor[i].backwardSpeedPin, Motor[i].BackwardSpeed);
+    digitalWrite(Motor[i].forwardSpeedPin, Motor[i].ForwardSpeed); 
   }
 }
 
