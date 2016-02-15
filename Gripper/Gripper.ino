@@ -1,7 +1,13 @@
 // include the library code:
-#include <LiquidCrystal.h>
-#include <Wire.h> 
+#include <LiquidCrystal.h> // for lcd screen
 #include "Adafruit_TCS34725.h" // for color sensing
+#include <Wire.h> // for current sensing DO WE NEED THIS? IT COMPILES WITHOUT IT
+#include <Adafruit_INA219.h> // for current sensing
+
+Adafruit_INA219 ina219;
+#if defined(ARDUINO_ARCH_SAMD)  // for Zero, output on USB Serial console, remove line below if using programming port to program the Zero!
+#define Serial SerialUSB
+#endif
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
