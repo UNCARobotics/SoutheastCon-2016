@@ -15,51 +15,59 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_700MS, TCS347
 
 ///////////////////////////////////////////END OF INITIALIZATION///////////////////////////////////////////////////
 
-class Gripper {  /////////////////////////GRIPPER CLASS DEFINITION//////////////////////////////////////////////////
+class Grippers {  /////////////////////////GRIPPER CLASS DEFINITION//////////////////////////////////////////////////
   public:
-  char block_1;
-  char block_2;
-  char block_3;
-  uint16_t colorTemp;
+  
+  struct Blocks {
+    char Color;
+    int Address; // address of Flora sensor
+    uint16_t colorTemp, r, g, b;
+  };
+
 
   //Block positions declarations (Picture below shows block numbers)
   // |1|    |3|
   // | |    |2|
   //      bot side of gripper
+  
+  Blocks Block[3] ={
+    {' ', 0 , 0, 0, 0, 0}, // add addresses
+    {' ', 0 , 0, 0, 0, 0},
+    {' ', 0, 0, 0, 0, 0}
+  };  
 
   void getColor() {
   //take color reading  
-  tcs.getRawData(&r, &g, &b, &c);
-  colorTemp = tcs.calculateColorTemperature(r, g, b);
-    
-    //red
-    if ((colorTemp > 4500) && (colorTemp < 9000)) {   
-    }
-    
-    //blue
-    else if ((colorTemp > 9000) && ( colorTemp < 13000)){
-    }
-    
-    //green
-    else if ((colorTemp > 3000) && (colorTemp < 4500)){
-    }
-    
-    //yellow
-    else if ( (colorTemp > 2000) && ( colorTemp < 3000 )){
-    }
-    
-    //ambient
-    else {
-     }
-}
+    for(int i=0;i<4;i++){
+      tcs.getRawData(&Block[i].r, &Block[i].g, &Block[i].b);
+      Block[i].colorTemp = tcs.calculateColorTemperature(Block[i].r, Block[i].g, Block[i].b);
+        
+        //red
+        if ( (Block[i].colorTemp > 4500) && (Block[i].colorTemp < 9000) ) {   
+        }
+        
+        //blue
+        else if ( (Block[i].colorTemp > 9000) && (Block[i].colorTemp < 13000) ){
+        }
+        
+        //green
+        else if ( (Block[i].colorTemp > 3000) && (Block[i].colorTemp < 4500) ){
+        }
+        
+        //yellow
+        else if ( (Block[i].colorTemp > 2000) && ( Block[i].colorTemp < 3000 ) ){
+        }
+        
+        //ambient
+        else {
+         }
+    }   
   }
+
 };
 //inititate grippers:////////////////////////////////////////////////////////////////////////////////////////
 
-Gripper A;
-Gripper B;
-Gripper C;
-Gripper D;
+Grippers Gripper[4] ;
 
 void setup() {
   // set up the LCD's number of columns and rows:
