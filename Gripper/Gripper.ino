@@ -17,13 +17,14 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_700MS, TCS347
 
 class Grippers {  /////////////////////////GRIPPER CLASS DEFINITION//////////////////////////////////////////////////
   public:
-  
+
+  uint16_t r, g, b, c, colorTemp;
+   
   struct Blocks {
     char Color;
     int Address; // address of Flora sensor
-    uint16_t colorTemp, r, g, b;
+   
   };
-
 
   //Block positions declarations (Picture below shows block numbers)
   // |1|    |3|
@@ -31,44 +32,71 @@ class Grippers {  /////////////////////////GRIPPER CLASS DEFINITION/////////////
   //      bot side of gripper
   
   Blocks Block[3] ={
-    {' ', 0 , 0, 0, 0, 0}, // add addresses
-    {' ', 0 , 0, 0, 0, 0},
-    {' ', 0, 0, 0, 0, 0}
+    {' ', 0}, // add addresses
+    {' ', 0},
+    {' ', 0}
   };  
 
+
+//// my idea is you go through each all blocks for each gripper, so you go into first gripper and take colors by stepping through blocks
+//// and then go into next gripper
   void getColor() {
   //take color reading  
-    for(int i=0;i<4;i++){
-      tcs.getRawData(&Block[i].r, &Block[i].g, &Block[i].b);
-      Block[i].colorTemp = tcs.calculateColorTemperature(Block[i].r, Block[i].g, Block[i].b);
+    for(int i=0;i<3;i++){
+      tcs.getRawData(&r, &g, &b, &c);
+      
+      colorTemp = tcs.calculateColorTemperature(r, g, b);
         
         //red
-        if ( (Block[i].colorTemp > 4500) && (Block[i].colorTemp < 9000) ) {   
+        if ( (colorTemp > 4500) && (colorTemp < 9000) ) {   
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("Red Block");
+          Block[i].Color = 'red';
         }
         
         //blue
-        else if ( (Block[i].colorTemp > 9000) && (Block[i].colorTemp < 13000) ){
+        else if ( (colorTemp > 9000) && (colorTemp < 13000) ){
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("Blue Block");
+          Block[i].Color = 'blue';
         }
         
         //green
-        else if ( (Block[i].colorTemp > 3000) && (Block[i].colorTemp < 4500) ){
+        else if ( (colorTemp > 3000) && (colorTemp < 4500) ){
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("Green Block");
+          Block[i].Color = 'green';
         }
         
         //yellow
-        else if ( (Block[i].colorTemp > 2000) && ( Block[i].colorTemp < 3000 ) ){
+        else if ( (colorTemp > 2000) && ( colorTemp < 3000 ) ){
+           lcd.clear();
+           lcd.setCursor(0,0);
+           lcd.print("Yellow Block");
+           Block[i].Color = 'yellow';
         }
         
         //ambient
         else {
+           lcd.clear();
+           lcd.setCursor(0,0);
+           lcd.print("Ambient");
          }
     }   
   }
 
 };
 //inititate grippers:////////////////////////////////////////////////////////////////////////////////////////
+Grippers Gripper[4];
 
-Grippers Gripper[4] ;
+//Gripper positions declarations (Picture below shows gripper numbers, from front of bot)
+// |1| |2| |3| |4|
+ 
 
+////////////////////////////////////////////////SETUP////////////////////////////////////////////////
 void setup() {
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
