@@ -141,8 +141,8 @@
         //This is for the exit conditions.
         void Avg_Error(float Er, int type){    //Shifts the array of errors then adds the most recent to the 0 spot
           if (type == 1){                      //Translation                                        
-            for(int i=ER_ARRAY_SIZE-1; i>=0; i--){   //Shifts        
-              Error_T_History[i+1] = Error_T_History[i];
+            for(int i=ER_ARRAY_SIZE-1; i>0; i--){   //Shifts        
+              Error_T_History[i] = Error_T_History[i-1];
             }
             Error_T_History[0] = Er;
                                                //Sums/w abs() and finds Average
@@ -152,8 +152,8 @@
             Avg_ErT = Avg_ErT/ER_ARRAY_SIZE;
           }
           else if(type==0){                   //Rotation
-            for(int i=ER_ARRAY_SIZE-1; i>=0; i--){  //Shifts
-              Error_R_History[i+1] = Error_R_History[i];
+            for(int i=ER_ARRAY_SIZE-1; i>0; i--){  //Shifts
+              Error_R_History[i] = Error_R_History[i-1];
             }
             Error_R_History[0] = Er;
             for(int k=0;k<ER_ARRAY_SIZE;k++){       //Sums/w abs() and finds Average
@@ -317,6 +317,9 @@
     int RoSpeed = 0;
     float Avg_ErR;
     Bump(Spin, roTime); // give the robot a kick in the right direction
+
+    fill_error_arrays(); // resets error arrays
+    
     while(1){
       
       //cases for each side
@@ -434,7 +437,10 @@
     float Ns_Tfb = 0; float Avg_ErT_fb = 100;    //new speed; Avg Error; for front/back translation
     float Ns_Tal = 0; float Avg_ErT_al = 100;    //new speed; Avg Error; for arm/leg translation
     float Ns_R = 0;   float Avg_ErR = 100;       //new speed; Avg Error; for all translation
+
+    fill_error_arrays(); // resets the error arrays
     
+    while(1){
     blockNum = (int)pixySense(d);    // store info about boxcars in struct and return #boxes seen
     
     Arm.sensePings();         // run normal Ping>motor PID for arm side of bot 
@@ -472,6 +478,7 @@
       
         flipMotors();
         setDrive(); //everything so far stored motor change data, now tell the motors to use that data
+    }
   }
     
 /////////////////////////////////////////////PIXY FUNCTIONS/////////////////////////////////////////////////////////

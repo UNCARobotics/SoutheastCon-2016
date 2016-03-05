@@ -126,8 +126,8 @@
         //This is for the exit conditions.
         void Avg_Error(float Er, int type){    //Shifts the array of errors then adds the most recent to the 0 spot
           if (type == 1){                      //Translation                                        
-            for(int i=ER_ARRAY_SIZE-1; i>=0; i--){   //Shifts        
-              Error_T_History[i+1] = Error_T_History[i];
+            for(int i=ER_ARRAY_SIZE-1; i>0; i--){   //Shifts        
+              Error_T_History[i] = Error_T_History[i-1];
             }
             Error_T_History[0] = Er;
                                                //Sums/w abs() and finds Average
@@ -137,8 +137,8 @@
             Avg_ErT = Avg_ErT/ER_ARRAY_SIZE;
           }
           else if(type==0){                   //Rotation
-            for(int i=ER_ARRAY_SIZE-1; i>=0; i--){  //Shifts
-              Error_R_History[i+1] = Error_R_History[i];
+            for(int i=ER_ARRAY_SIZE-1; i>0; i--){  //Shifts
+              Error_R_History[i] = Error_R_History[i-1];
             }
             Error_R_History[0] = Er;
             for(int k=0;k<ER_ARRAY_SIZE;k++){       //Sums/w abs() and finds Average
