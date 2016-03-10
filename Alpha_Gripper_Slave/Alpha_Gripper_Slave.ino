@@ -10,14 +10,16 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS347
 #define CUR_ARRAY_SIZE 20
 #define POS_ARRAY_SIZE 50
 
+enum {
+  RED,
+  YELLOW,
+  BLUE,
+  GREEN
+};
 
-float Color_Hist[COLOR_ARRAY_SIZE] = {0};
-float ThisColor;
-float Avg_Color;
-float color;
+int BlockColors[6] = {0}; //colors of beta grippers 0-2, alpha colors 3-5
 
 class AlphaGripper {
-  
   public:
     uint8_t Cur_Address; //address of the current sensors
     int relax;  // flag for zero'd finger (no block)
@@ -30,8 +32,11 @@ class AlphaGripper {
       
     float current_history[CUR_ARRAY_SIZE]; //current is bouncy, averaging is needed
     float Avg_current; 
+    
     float Pos[POS_ARRAY_SIZE]; //current is bouncy, averaging is needed
     float NewPos; //after caculation, the new position to write to the servos 
+    
+
 
     Servo gripServo;     // a servo for the grippers
     Adafruit_INA219 ina219; // a current sensor 
@@ -61,7 +66,6 @@ class AlphaGripper {
     }
     
     float holdBlocks() {
-     
       if (relax == 0) { //if not flagged
 
         NewPos += this->Gripper_PD(); //change in posistion
@@ -72,6 +76,19 @@ class AlphaGripper {
       else NewPos = 100; //if no block, open back up
       return NewPos;
     }
+    
+    float CloseToRead() {
+      if (relax == 0) { //if not flagged
+
+        NewPos += this->Gripper_PD(); //change in posistion
+
+        NewPos = (NewPos < 0) ? 0 : NewPos; //NewPos should be positive;
+        relax = this->zeroCheck(NewPos); // check the zero case
+      }
+      else if (this->zeroCheck(NewPos) == 1) NewPos = 100; //if no block, open back up
+      else return 500;
+      return NewPos;
+    }
 
     int zeroCheck(float ThisPos) { // check to see if the finger is zero'd out (no block)
       int flag = 0;
@@ -80,35 +97,6 @@ class AlphaGripper {
       Avg_Pos = runningAvg(ThisPos, POS_ARRAY_SIZE, Pos);
       flag = (Avg_Pos) ? 0 : 1;
       return flag;
-    }
-    
-    void readColor() {
-      uint16_t r, g, b, c, colorTemp;
-      int R = 0; int B = 0; int Y = 0; int G = 0;
-
-      for (int i = 0; i < COLOR_ARRAY_SIZE; i++) { //ramp up to good avg
-        tcs.getRawData(&r, &g, &b, &c);
-        colorTemp = tcs.calculateColorTemperature(r, g, b);
-        color = runningAvg((float)colorTemp, COLOR_ARRAY_SIZE, Color_Hist);
-      }
-
-      for (int i = 0; i < COLOR_ARRAY_SIZE; i++) { //calculate the mode of 7 blocks
-        tcs.getRawData(&r, &g, &b, &c);
-        colorTemp = tcs.calculateColorTemperature(r, g, b);
-        color = runningAvg((float)colorTemp, COLOR_ARRAY_SIZE, Color_Hist);
-        if ((color >= 20000)) R++;
-        else if ((color >= 9500) && (color < 20000)) B++;
-        else if ((color >= 3500) && (color < 9500)) G++;
-        else if ((color > 1000) && ( color < 3500 )) Y++;
-      }
-
-      if (B >= (COLOR_ARRAY_SIZE - 5)) Serial.println("Blue Block");
-
-      else if (G >= (COLOR_ARRAY_SIZE - 5)) Serial.println("Green Block");
-
-      else if (Y >= (COLOR_ARRAY_SIZE - 5)) Serial.println("Yellow Block");
-
-      else Serial.println("Red Block");
     }
     
     float runningAvg(float Var, int Size, float *Array) {
@@ -173,7 +161,61 @@ void fill_current_arrays() {
   }
 }
 
+////////////////////////////////////////////////////////Color///////////////////////////////////////////////////////////////
+void getColors(){
+void readColors() {
+      uint16_t r, g, b, c, colorTemp;
+      int R = 0; int B = 0; int Y = 0; int G = 0;
+      uint16_t Color_Hist[COLOR_ARRAY_SIZE];
+      uint16_t color;
+      for(int j=0; j<6; j++){
+        tcaselect(j);
+          for (int i = 0; i < COLOR_ARRAY_SIZE; i++) { //ramp up to good avg
+            tcs.getRawData(&r, &g, &b, &c);
+            colorTemp = tcs.calculateColorTemperature(r, g, b);
+            color = runningAvg(colorTemp, COLOR_ARRAY_SIZE, Color_Hist);
+          }
+    
+          for (int i = 0; i < COLOR_ARRAY_SIZE; i++) { //calculate the mode of 7 blocks
+            tcs.getRawData(&r, &g, &b, &c);
+            colorTemp = tcs.calculateColorTemperature(r, g, b);
+            color = runningAvg(colorTemp, COLOR_ARRAY_SIZE, Color_Hist);
+            if ((color >= 20000)) R++;
+            else if ((color >= 9500) && (color < 20000)) B++;
+            else if ((color >= 3500) && (color < 9500)) G++;
+            else if ((color > 1000) && ( color < 3500 )) Y++;
+          }
+    
+          if (B >= (COLOR_ARRAY_SIZE - 5)) BlockColors[j] = BLUE; 
+    
+          else if (G >= (COLOR_ARRAY_SIZE - 5)) BlockColors[j] = GREEN;
+    
+          else if (Y >= (COLOR_ARRAY_SIZE - 5)) BlockColors[j] =YELLOW;
+    
+          else BlockColors[j] = RED;
+        }
+    }
+    float runningAvg(uint16_t Var, int Size, uint16_t *Array) {
+      float Avg_Var;
+      for (int j = Size - 1; j > 0; j--) { //Shifts
+        Array[j] = Array[j - 1];
+      }
+      Array[0] = Var;
 
+      Avg_Var = 0;                                           //Sums/w abs() and finds Average
+      for (int k = 0; k < Size; k++) {
+        Avg_Var += abs(Array[k]);
+      }
+      Avg_Var = Avg_Var / Size;
+      return Avg_Var;
+}
+
+void tcaselect(uint8_t i){
+  if(i>7) return;
+  Wire.beginTransmission(0x70);
+  Wire.write(1<<i);
+  Wire.endTransmission();
+}
 
 
 
