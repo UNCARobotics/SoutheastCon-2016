@@ -1,6 +1,6 @@
 #include <NewPing.h>
-#define PIN_F1 2
-#define PIN_F2 3
+#define PIN_F1 5
+#define PIN_F2 6
 #define HIST_ARRAY_SIZE 5 //array of ping readings to average
 
 //initialize 2 pings
@@ -21,7 +21,8 @@ float Pings_History[2][HIST_ARRAY_SIZE];
 void setup (void)
 {
   Serial.begin(115200);
-  
+  analogWrite(3, LOW); // LED's off
+  digitalWrite(3, LOW);
   // have to send on master in, *slave out*
   pinMode(MISO, OUTPUT);
 
@@ -81,11 +82,14 @@ ISR (SPI_STC_vect)
 
 void loop (void){
 if (on == 1){       //only if told, turn sensors on
+  
   sensePings();
   displayPackage(); //debugging prints
 }
   // if SPI not active, clear current command
 if (digitalRead (SS) == HIGH)
+    analogWrite(3, LOW);
+    digitalWrite(3, LOW);
     command = 0;
 }  
 
@@ -99,7 +103,10 @@ void sensePings() {
     
     //take measurement 
     Ping[0] = (sonar[0].ping()/29/2)*10;  
+    analogWrite(3, HIGH); //LED ON
     Ping[1] = (sonar[1].ping()/29/2)*10;
+    digitalWrite(3, HIGH); //LEN ON
+    
     //shift new measurement into a history of measurments
     for(int i=0;i<2;i++){
       for(int j=HIST_ARRAY_SIZE-1; j>0; j--){   //Shifts        

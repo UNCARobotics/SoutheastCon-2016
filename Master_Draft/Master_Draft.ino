@@ -26,12 +26,35 @@
   #include <Pixy.h>
  
   #define ER_ARRAY_SIZE 7
-  #define SS_2 2
-  #define SS_3 3
-  #define SS_4 4
-  #define SS_5 5
+  #define SPEED 255
+  
+  #define SS_2 38
+  #define SS_3 40
+  #define SS_4 42
+  #define SS_5 44
+
+  #define M0_IN1 48
+  #define M0_IN2 49
+
+  #define M1_IN1 34
+  #define M1_IN2 35
+  
+  #define M2_IN1 30
+  #define M2_IN2 31
+  
+  #define M3_IN1 33
+  #define M3_IN2 32
+  
+  #define M0_D2 4
+  #define M1_D2 5
+  
+  #define M2_D2 3
+  #define M3_D2 2
+  
+  #define EN_M0_M1 46
+  #define EN_M2_M3 22
   // initialize the library with the numbers of the interface pins
-  LiquidCrystal lcd(41, 43, 45, 47, 49, 51);
+  LiquidCrystal lcd(39, 41, 43, 45, 47, 37);
 
   Pixy pixy;
 
@@ -59,14 +82,14 @@
   
   float BaseSpeed = 0;
   
-  struct Motors {   //Motor Values
-    int Enable;     
-    int BackwardSpeed;  //high = backwards
-    int ForwardSpeed;      //High = forwards
+  struct Motors {   //Motor Values   
+    int Inv_Backward;  //high = backwards
+    int Inv_Forward;      //High = forwards
+    int Speed;
     
-    int enablePin;  //Motor Pins
-    int backwardSpeedPin;
-    int forwardSpeedPin;
+    int Inv_Backward_Pin;  //high = backwards
+    int Inv_Forward_Pin; 
+    int SpeedPin;
   };
   
   //Motor initilization (Picture Below shows motor numbers);
@@ -76,10 +99,10 @@
   //        B
   
   Motors Motor[4] ={
-    { HIGH, LOW, HIGH, 5, 6, 7},
-    { HIGH, LOW, HIGH, 8, 9, 10},
-    { HIGH, LOW, HIGH, 11, 12, 13},
-    { HIGH, LOW, HIGH, 2, 3, 4}
+    { LOW, HIGH, LOW, M0_IN1, M0_IN2, M0_D2},
+    { LOW, HIGH, LOW, M1_IN1, M1_IN2, M1_D2},
+    { LOW, HIGH, LOW, M2_IN1, M2_IN2, M2_D2},
+    { LOW, HIGH, LOW, M3_IN1, M3_IN2, M3_D2}
   }; 
   ////////////////////////////////////////////END OF INITIALIZATION///////////////////////////////////////////////////
   
@@ -213,10 +236,10 @@
    
   //intitiate sides:////////////////////////////////////////////////////
          //Pin1,  Pin2,  PT,   DT,   PR,     DR
-  Side Front {0,   1,   .1,   .05,   0.08 , 0.08, 0, 0,{},{},0,0, SS_1};
-  Side Back  {2,   3,   .1,   .05,   0.08 , 0.08, 0, 0,{},{},0,0, SS_2};
-  Side Arm   {4,   5,    1,    .1,    0.1,   0.1, 0, 0,{},{},0,0, SS_3};
-  Side Leg   {6,   7,    1,    .1,    0.1,   0.1, 0, 0,{},{},0,0, SS_4};
+  Side Front {0,   1,     .5,   .01,   0.08 , 0.08, 0, 0,{},{},0,0, SS_2};
+  Side Back  {2,   3,     .5,   .01,   0.08 , 0.08, 0, 0,{},{},0,0, SS_3};
+  Side Arm   {4,   5,    .5,    .01,    0.1,   0.1, 0, 0,{},{},0,0, SS_4};
+  Side Leg   {6,   7,    .5,    .01,    0.1,   0.1, 0, 0,{},{},0,0, SS_5};
   
   
   
@@ -224,6 +247,8 @@
   ////////////////////////////////////////////////SETUP///////////////////////////////////////////////////////////////
   
   void setup() {
+    // for communicating with Processing
+    Serial.begin(115200);
     
     lcd.begin(16, 2); // set up the LCD's number of columns and rows
     lcd.print("IEEE TESTING");   // Print a message to the LCD.
@@ -231,11 +256,16 @@
     lcd.clear();
 
     pixy.init(); //Initiate the PIXY
-   
+    
+    pinMode (EN_M0_M1, OUTPUT);
+    pinMode (EN_M2_M3, OUTPUT);
+    digitalWrite(EN_M0_M1, HIGH);
+    digitalWrite(EN_M2_M3, HIGH);
     for(int i=0;i<4;i++){  //configure pin modes
-      pinMode (Motor[i].enablePin, OUTPUT);
-      pinMode (Motor[i].backwardSpeedPin, OUTPUT);
-      pinMode (Motor[i].forwardSpeedPin, OUTPUT);  
+      
+      pinMode (Motor[i].Inv_Backward_Pin, OUTPUT);
+      pinMode (Motor[i].Inv_Forward_Pin, OUTPUT); 
+      pinMode (Motor[i].SpeedPin, OUTPUT); 
     }
     
     //All Ping SPI slave select pins
@@ -263,20 +293,37 @@
     // variables to make calling Rotation function easier to read
     int CCW = 1, CW = 0;
     int F = 0, A = 1, B = 2, L = 3;
-   
-  Nav(20,0,0,20); //Navigate out of tunnel using Front and Leg
+    
+  lcd.clear();
+  lcd.print("Ready...3");
+  delay(1000);
+  lcd.clear();
+  lcd.print("Ready...2");
+  delay(1000);
+  lcd.clear();
+  lcd.print("Ready...1");
+  delay(1000);
+  
+  Nav(150,0,0,150); //Navigate out of tunnel using Front and Leg
   lcd.clear();
   lcd.print("here");
   delay(5000);
   
   Rotate(A, CCW, 500); //Rotate Arm to Bardge C
   lcd.clear();
-  lcd.print("Rotate");
-  delay(2000);
-  Nav(30,0,30,0); //Center with Front and Arm
+  lcd.print("Rotated");
+  delay(5000);
+  
+  Nav(300,150,0,0); //Center with Front and Arm
   lcd.clear();
   lcd.print("Im Here");
   delay(5000);
+  
+  lcd.clear();
+  lcd.print("Turning off");
+  delay(1500);
+  
+ 
 //  
 //  Rotate(L, CCW, 500); //Rotate to boat unload orientation 
 //  Nav(30,0,0,30);
@@ -348,10 +395,10 @@
         return;
       }
     // Sum all speed caculations in proper orintation for mecanum drive
-      Motor[0].ForwardSpeed = Ns_Tfb + Ns_Tal - (Ns_R/numParameters);
-      Motor[1].ForwardSpeed = Ns_Tfb - Ns_Tal - (Ns_R/numParameters);
-      Motor[2].ForwardSpeed = Ns_Tfb - Ns_Tal + (Ns_R/numParameters);
-      Motor[3].ForwardSpeed = Ns_Tfb + Ns_Tal + (Ns_R/numParameters);
+      Motor[0].Speed = Ns_Tfb + Ns_Tal - (Ns_R/numParameters);
+      Motor[1].Speed = Ns_Tfb - Ns_Tal - (Ns_R/numParameters);
+      Motor[2].Speed = Ns_Tfb - Ns_Tal + (Ns_R/numParameters);
+      Motor[3].Speed = Ns_Tfb + Ns_Tal + (Ns_R/numParameters);
     
       flipMotors();
       printReadings(F,B,A,L); //print the Sonar readings to the LCD screen
@@ -398,10 +445,10 @@
         return;
       }
       //store motor speeds according to the functions above
-      Motor[0].ForwardSpeed = RoSpeed;
-      Motor[1].ForwardSpeed = RoSpeed;
-      Motor[2].ForwardSpeed = -RoSpeed;
-      Motor[3].ForwardSpeed = -RoSpeed;
+      Motor[0].Speed = RoSpeed;
+      Motor[1].Speed = RoSpeed;
+      Motor[2].Speed = -RoSpeed;
+      Motor[3].Speed = -RoSpeed;
      
       flipMotors();
       setDrive(); //everything so far stored motor change data, now tell the motors to use that data
@@ -412,26 +459,23 @@
   
    //////////////////////////////////////////////////SET;STOP;BUMP;FLIP////////////////////////////////////////////////////////////
   void setDrive(){
+    digitalWrite(EN_M0_M1, HIGH);
+    digitalWrite(EN_M2_M3, HIGH);
+    
     for(int i=0;i<4;i++){
-      digitalWrite(Motor[i].enablePin, HIGH);
-      digitalWrite(Motor[i].backwardSpeedPin, Motor[i].BackwardSpeed);
-      digitalWrite(Motor[i].forwardSpeedPin, Motor[i].ForwardSpeed); 
+      analogWrite(Motor[i].SpeedPin, Motor[i].Speed); 
     }
   }
   
   void stopDrive(){
-     for(int i=0;i<4;i++){
-      digitalWrite(Motor[i].enablePin, LOW);
-    }
+    digitalWrite(EN_M0_M1, LOW);
+    digitalWrite(EN_M2_M3, LOW);
+      
   }
   
   void Bump(int spin, int RoTime){
     int x;
     int y;
-    
-     for(int i=0;i<4;i++){                    //Enable all motors
-       digitalWrite(Motor[i].enablePin, HIGH);
-     }
      
     if (spin == 1){                         // if CCW
      x = LOW;  y = HIGH;
@@ -441,13 +485,16 @@
     }
       
     for(int i=0;i<2;i++){         // Motors 0-1 spin one direction
-        digitalWrite(Motor[i].backwardSpeedPin, x);
-        digitalWrite(Motor[i].forwardSpeedPin, y); 
+        digitalWrite(Motor[i].Inv_Backward_Pin, x);
+        digitalWrite(Motor[i].Inv_Forward_Pin, y); 
+        
     }
     for(int i=2;i<4;i++){       // Motors 2-3 spin the opposite direction
-        digitalWrite(Motor[i].backwardSpeedPin, y);
-        digitalWrite(Motor[i].forwardSpeedPin, x); 
+        digitalWrite(Motor[i].Inv_Backward_Pin, y);
+        digitalWrite(Motor[i].Inv_Forward_Pin, x); 
+       
     }
+    setDrive();
     delay(RoTime);  // rotate for a certian amount of time before stoping 
     stopDrive(); 
   }
@@ -455,20 +502,21 @@
   void flipMotors(){ 
     // if given a final negative speed, make the final speed positive and reverse the wheel direction for each motor
     for(int i=0;i<4;i++){
-        if (Motor[i].ForwardSpeed < 0) {
-            Motor[i].BackwardSpeed = -Motor[i].ForwardSpeed;
-            Motor[i].ForwardSpeed = 0;
+        if (Motor[i].Speed < 0) {
+            Motor[i].Speed = -Motor[i].Speed;
+            digitalWrite(Motor[i].Inv_Backward_Pin, HIGH);
+        digitalWrite(Motor[i].Inv_Forward_Pin, LOW); 
         }
         else {
-          Motor[i].BackwardSpeed = LOW;
+        digitalWrite(Motor[i].Inv_Backward_Pin, LOW);
+        digitalWrite(Motor[i].Inv_Forward_Pin, HIGH); 
         }
       }
     
     // constrain the speeds of the motors to a value in between 0 and 255, the faster the motor can go is 255
     // if the speed is < 0 it gets set as 0, if the speed is > 255 it gets set as 255
     for(int i=0;i<4;i++){
-      Motor[i].ForwardSpeed = constrain(Motor[i].ForwardSpeed,0,255);
-      Motor[i].BackwardSpeed = constrain(Motor[i].BackwardSpeed,0,255);
+      Motor[i].Speed = constrain(Motor[i].Speed,0,255);
     }
   }
 
@@ -521,10 +569,10 @@
  
   
       // Sum all speed caculations in proper orintation for mecanum drive
-        Motor[0].ForwardSpeed = Ns_Tfb + Ns_Tal - (Ns_R);
-        Motor[1].ForwardSpeed = Ns_Tfb - Ns_Tal - (Ns_R);
-        Motor[2].ForwardSpeed = Ns_Tfb - Ns_Tal + (Ns_R);
-        Motor[3].ForwardSpeed = Ns_Tfb + Ns_Tal + (Ns_R);
+        Motor[0].Speed = Ns_Tfb + Ns_Tal - (Ns_R);
+        Motor[1].Speed = Ns_Tfb - Ns_Tal - (Ns_R);
+        Motor[2].Speed = Ns_Tfb - Ns_Tal + (Ns_R);
+        Motor[3].Speed = Ns_Tfb + Ns_Tal + (Ns_R);
       
         flipMotors();
         setDrive(); //everything so far stored motor change data, now tell the motors to use that data
@@ -647,6 +695,95 @@
     //dummy function for compiling 
   }
   
+ void Process_PD(){
+    // for temporarily holding values of constants that have been recieved from processing
+  byte pt; byte dt; byte pr; byte dr;
+  int PT_total = 0; int DT_total = 0; int PR_total = 0; int DR_total = 0;
+  int side;
+  bool dataReady = LOW;
+  int index = 0;
+  int bufferArray[10];
+  float Mag;
+  float scale = 0;
+  
+  if(Serial.available()){  // if there is serial data to read...
+         bufferArray[index++] = Serial.read(); // load the current byte into the current array index location
+         if(index == 10){
+          index=0;
+          dataReady = HIGH;
+         }
+     }
 
+    if(dataReady){
+      // setting value of magnitude
+      scale = (float)bufferArray[9];
+
+      if(scale == 1) Mag = 100;
+
+      if(scale == 2) Mag = 10;
+
+      if(scale == 3) Mag = 1;
+
+      if(scale == 4) Mag = 0.1;
+
+      if(scale == 5) Mag = 0.01;
+      
+    // if side is front
+      if(bufferArray[0]==0){
+        PT_total = bufferArray[1];
+        PT_total <<= 8;
+        PT_total = PT_total | bufferArray[2];
+        Front.P_T = (float)PT_total/Mag;
+        Back.P_T = (float)PT_total/Mag;
+      
+        DT_total = bufferArray[3];
+        DT_total <<= 8;
+        DT_total = DT_total | bufferArray[4];
+        Front.D_T = (float)DT_total/Mag;
+        Back.D_T = (float)DT_total/Mag;
+      
+        PR_total = bufferArray[5];
+        PR_total <<= 8;
+        PR_total = PR_total | bufferArray[6];
+        Front.P_R = (float)PR_total/Mag;
+        Back.P_R = (float)PR_total/Mag;
+      
+        DR_total = bufferArray[7];
+        DR_total <<= 8;
+        DR_total = DR_total | bufferArray[8];
+        Front.D_R = (float)DR_total/Mag;
+        Back.D_R = (float)DR_total/Mag;
+      }   
+  
+  // if side is Arm
+      if(bufferArray[0]==1){
+        PT_total = bufferArray[1];
+        PT_total <<= 8;
+        PT_total = PT_total | bufferArray[2];
+        Arm.P_T = (float)PT_total/Mag;
+        Leg.P_T = (float)PT_total/Mag;
+      
+        DT_total = bufferArray[3];
+        DT_total <<= 8;
+        DT_total = DT_total | bufferArray[4];
+        Arm.D_T = (float)DT_total/Mag;
+        Leg.D_T = (float)DT_total/Mag;
+      
+        PR_total = bufferArray[5];
+        PR_total <<= 8;
+        PR_total = PR_total | bufferArray[6];
+        Arm.P_R = (float)PR_total/Mag;
+        Leg.P_R = (float)PR_total/Mag;
+      
+        DR_total = bufferArray[7];
+        DR_total <<= 8;
+        DR_total = DR_total | bufferArray[8];
+        Arm.D_R = (float)DR_total/Mag;
+        Leg.D_R = (float)DR_total/Mag;
+ 
+      }   
+         dataReady = LOW;
+    }
+ }
   
 
