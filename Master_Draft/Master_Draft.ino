@@ -26,7 +26,7 @@
   #include <Pixy.h>
  
   #define ER_ARRAY_SIZE 7
-  #define SPEED 255
+  
   
   #define SS_2 38
   #define SS_3 40
@@ -303,6 +303,28 @@
   lcd.clear();
   lcd.print("Ready...1");
   delay(1000);
+
+  //drive forward for limit testing
+  digitalWrite(M0_IN1, LOW);
+  digitalWrite(M0_IN2, HIGH);
+
+  digitalWrite(M1_IN1, LOW);
+  digitalWrite(M1_IN2, HIGH);
+
+  digitalWrite(M2_IN1, LOW);
+  digitalWrite(M2_IN2, HIGH);
+
+  digitalWrite(M3_IN1, LOW);
+  digitalWrite(M3_IN2, HIGH);
+
+
+  analogWrite(M0_D2, 15);
+  analogWrite(M1_D2, 15);
+  analogWrite(M2_D2, 15);
+  analogWrite(M3_D2, 15);
+  delay(3000);
+  stopDrive();
+  delay(5000);
   
   Nav(150,0,0,150); //Navigate out of tunnel using Front and Leg
   lcd.clear();
@@ -517,7 +539,10 @@
     // if the speed is < 0 it gets set as 0, if the speed is > 255 it gets set as 255
     for(int i=0;i<4;i++){
       Motor[i].Speed = constrain(Motor[i].Speed,0,255);
+      //condition for motors not handling torque
+      //Motor[i].Speed = (Motor[i].Speed <= 15) ? 0 : Motor[i].Speed;
     }
+    
   }
 
   void fill_error_arrays(){

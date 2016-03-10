@@ -103,9 +103,9 @@ void sensePings() {
     
     //take measurement 
     Ping[0] = (sonar[0].ping()/29/2)*10;  
-    analogWrite(3, HIGH); //LED ON
+    ping_1_check();
     Ping[1] = (sonar[1].ping()/29/2)*10;
-    digitalWrite(3, HIGH); //LEN ON
+    ping_2_check();
     
     //shift new measurement into a history of measurments
     for(int i=0;i<2;i++){
@@ -124,6 +124,16 @@ void sensePings() {
       package[i][0] = Dist[i] >> 8; //chop into leading byte
       package[i][1] = Dist[i] & 0xFF; //chop into trailing byte
     }  
+}
+void ping_1_check(){
+  if (Ping[0] > 0){
+   analogWrite(3, HIGH); //LED ON
+  }
+}
+void ping_2_check(){
+  if (Ping[1] > 0){
+   digitalWrite(3, HIGH); //LED ON
+  }
 }
 
 // for Debugging
