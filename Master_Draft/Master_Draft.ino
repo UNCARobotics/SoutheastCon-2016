@@ -527,7 +527,7 @@
         if (Motor[i].Speed < 0) {
             Motor[i].Speed = -Motor[i].Speed;
             digitalWrite(Motor[i].Inv_Backward_Pin, HIGH);
-        digitalWrite(Motor[i].Inv_Forward_Pin, LOW); 
+            digitalWrite(Motor[i].Inv_Forward_Pin, LOW); 
         }
         else {
         digitalWrite(Motor[i].Inv_Backward_Pin, LOW);
@@ -540,7 +540,7 @@
     for(int i=0;i<4;i++){
       Motor[i].Speed = constrain(Motor[i].Speed,0,255);
       //condition for motors not handling torque
-      //Motor[i].Speed = (Motor[i].Speed <= 15) ? 0 : Motor[i].Speed;
+      Motor[i].Speed = (Motor[i].Speed <= 40) ? 0 : Motor[i].Speed;
     }
     
   }
