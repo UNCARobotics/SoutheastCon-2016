@@ -9,6 +9,7 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS347
 #define COLOR_ARRAY_SIZE 20
 #define CUR_ARRAY_SIZE 20
 #define POS_ARRAY_SIZE 50
+#define READ_POS 40
 
 enum {
   RED,
@@ -17,7 +18,6 @@ enum {
   GREEN
 };
 
-int BlockColors[6] = {0}; //colors of beta grippers 0-2, alpha colors 3-5
 
 class AlphaGripper {
   public:
@@ -78,16 +78,9 @@ class AlphaGripper {
     }
     
     float CloseToRead() {
-      if (relax == 0) { //if not flagged
-
-        NewPos += this->Gripper_PD(); //change in posistion
-
-        NewPos = (NewPos < 0) ? 0 : NewPos; //NewPos should be positive;
-        relax = this->zeroCheck(NewPos); // check the zero case
-      }
-      else if (this->zeroCheck(NewPos) == 1) NewPos = 100; //if no block, open back up
-      else return 500;
-      return NewPos;
+      for(int i=0;i<3;i++){ //open for block placement  
+        this->gripServo.write(READ_POS);   
+       } 
     }
 
     int zeroCheck(float ThisPos) { // check to see if the finger is zero'd out (no block)
@@ -130,16 +123,81 @@ AlphaGripper Finger[3] = {
   {0x44,   0,     5,   300,  0.001, 0, {},  0,   {},   90}
 };
 
+volatile byte command = 0;   // stores value recieved from master, tells slave what case to run
+volatile int task = 0; //turns sensor on and off
+byte package[2] = {0};
+
+int AllColors[6] = {0}; //colors of alpha grippers 0-2, beta colors 3-5
+int myColors[3] = {0};
+
 void setup() {
+  Serial.begin(115200);
+  
   for(int i=0; i<3; i++){
     Finger[i].initSensors();
   }
-
-  Serial.begin(115200);
   
+  pinMode(MISO, OUTPUT);
+
+  // turn on SPI in slave mode
+  SPCR |= _BV(SPE);
+
+  // turn on interrupts
+  SPCR |= _BV(SPIE); 
 }
 
+// SPI interrupt routine//////////////////////////////////////////////////////////////////////
+ISR (SPI_STC_vect)
+{
+  byte c = SPDR;
+ 
+  switch (command)
+  {
+  // no command? then this is the command
+  case 0:
+    command = c;
+    SPDR = 0;
+    task = 1;     //getting a trasfer? turn on sensors
+    break;
+    
+  case 'f':
+    command = c;
+    SPDR = package[0][0];  // leading byte of ping 1
+    break;
+    
+  case 2:
+    command = c;
+    SPDR = package[0][1];  // trailing byte of ping 1
+    break;
+
+  case 3:
+    command = c;
+    SPDR = package[1][0];  // leading byte of ping 2
+    break;
+    
+  case 4:
+    command = c;
+    SPDR = package[1][1];  // trailing byte of ping 2
+    break;
+ 
+  case 'q':             //reciving 'q' primes the slave to turn off sensors
+    command = c;
+    SPDR = package[1][1];  // trailing byte of ping 2 on last transmition
+    task = 0;               //turn off sensors
+    break;
+    
+  } // end of switch
+}  // end of Interupt //////////////////////////////////////////////////////////////////
+
 void loop() {
+  if (task == 1){       //only if told, turn sensors on
+    
+    sensePings();
+    displayPackage(); //debugging prints
+  }
+   
+
+  
   int Position = 90;
   Serial.println("Hello!"); 
   for(int i=0;i<3;i++){ //open for block placement 
@@ -154,6 +212,17 @@ void loop() {
   }
 }
 
+void DropColor(int color){
+  for(int i=0;i<3;i++){
+    relax[i] = (myColors[i] == color) ? 1 : 0; //put guts in interrupt without function call
+  }
+}
+
+void DropAll(){
+  for(int i=0;i<3;i++){ //put guts in interrupt without function call
+    relax[i] = 1;
+  }
+}
 
 void fill_current_arrays() {
   for(int i=0; i<3; i++){
@@ -163,6 +232,21 @@ void fill_current_arrays() {
 
 ////////////////////////////////////////////////////////Color///////////////////////////////////////////////////////////////
 void getColors(){
+  
+  readColors(); //Fills all colors array
+  
+  package[0] = 0;
+  package[1] = 0;
+  
+  for(int i=0;i<3;i++){  //store colors for this gripper in exclusive array. 
+     myColors[i] = AllColors[i];
+  }
+  
+  package[0] = (AllColors[0]<<4) | (AllColors[1]<<2) | (AllColors[2]) | B11000000;
+  package[1] = (AllColors[3]<<4) | (AllColors[4]<<2) | (AllColors[5]) | B11000000;
+
+}
+
 void readColors() {
       uint16_t r, g, b, c, colorTemp;
       int R = 0; int B = 0; int Y = 0; int G = 0;
@@ -186,15 +270,16 @@ void readColors() {
             else if ((color > 1000) && ( color < 3500 )) Y++;
           }
     
-          if (B >= (COLOR_ARRAY_SIZE - 5)) BlockColors[j] = BLUE; 
+          if (B >= (COLOR_ARRAY_SIZE - 5)) AllColors[j] = BLUE; 
     
-          else if (G >= (COLOR_ARRAY_SIZE - 5)) BlockColors[j] = GREEN;
+          else if (G >= (COLOR_ARRAY_SIZE - 5)) AllColors[j] = GREEN;
     
-          else if (Y >= (COLOR_ARRAY_SIZE - 5)) BlockColors[j] =YELLOW;
+          else if (Y >= (COLOR_ARRAY_SIZE - 5)) AllColors[j] =YELLOW;
     
-          else BlockColors[j] = RED;
+          else AllColors[j] = RED;
         }
     }
+    
     float runningAvg(uint16_t Var, int Size, uint16_t *Array) {
       float Avg_Var;
       for (int j = Size - 1; j > 0; j--) { //Shifts
