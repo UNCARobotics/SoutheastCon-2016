@@ -236,10 +236,10 @@
    
   //intitiate sides:////////////////////////////////////////////////////
          //Pin1,  Pin2,  PT,   DT,   PR,     DR
-  Side Front {0,   1,     .5,   .01,   0.08 , 0.08, 0, 0,{},{},0,0, SS_2};
-  Side Back  {2,   3,     .5,   .01,   0.08 , 0.08, 0, 0,{},{},0,0, SS_3};
-  Side Arm   {4,   5,    .5,    .01,    0.1,   0.1, 0, 0,{},{},0,0, SS_4};
-  Side Leg   {6,   7,    .5,    .01,    0.1,   0.1, 0, 0,{},{},0,0, SS_5};
+  Side Front {0,   1,    0,   0,   0,  0, 0, 0,{},{},0,0, SS_2};
+  Side Back  {2,   3,    0,   0,   0,  0, 0, 0,{},{},0,0, SS_3};
+  Side Arm   {4,   5,    0,   0,   0,  0, 0, 0,{},{},0,0, SS_4};
+  Side Leg   {6,   7,    0,   0,   0,  0, 0, 0,{},{},0,0, SS_5};
   
   
   
@@ -304,46 +304,46 @@
   lcd.print("Ready...1");
   delay(1000);
 
-  //drive forward for limit testing
-  digitalWrite(M0_IN1, LOW);
-  digitalWrite(M0_IN2, HIGH);
-
-  digitalWrite(M1_IN1, LOW);
-  digitalWrite(M1_IN2, HIGH);
-
-  digitalWrite(M2_IN1, LOW);
-  digitalWrite(M2_IN2, HIGH);
-
-  digitalWrite(M3_IN1, LOW);
-  digitalWrite(M3_IN2, HIGH);
-
-
-  analogWrite(M0_D2, 15);
-  analogWrite(M1_D2, 15);
-  analogWrite(M2_D2, 15);
-  analogWrite(M3_D2, 15);
-  delay(3000);
-  stopDrive();
-  delay(5000);
+//  //drive forward for limit testing
+//  digitalWrite(M0_IN1, LOW);
+//  digitalWrite(M0_IN2, HIGH);
+//
+//  digitalWrite(M1_IN1, LOW);
+//  digitalWrite(M1_IN2, HIGH);
+//
+//  digitalWrite(M2_IN1, LOW);
+//  digitalWrite(M2_IN2, HIGH);
+//
+//  digitalWrite(M3_IN1, LOW);
+//  digitalWrite(M3_IN2, HIGH);
+//
+//
+//  analogWrite(M0_D2, 15);
+//  analogWrite(M1_D2, 15);
+//  analogWrite(M2_D2, 15);
+//  analogWrite(M3_D2, 15);
+//  delay(3000);
+//  stopDrive();
+//  delay(5000);
   
   Nav(150,0,0,150); //Navigate out of tunnel using Front and Leg
   lcd.clear();
   lcd.print("here");
   delay(5000);
-  
-  Rotate(A, CCW, 500); //Rotate Arm to Bardge C
-  lcd.clear();
-  lcd.print("Rotated");
-  delay(5000);
-  
-  Nav(300,150,0,0); //Center with Front and Arm
-  lcd.clear();
-  lcd.print("Im Here");
-  delay(5000);
-  
-  lcd.clear();
-  lcd.print("Turning off");
-  delay(1500);
+//  
+//  Rotate(A, CCW, 500); //Rotate Arm to Bardge C
+//  lcd.clear();
+//  lcd.print("Rotated");
+//  delay(5000);
+//  
+//  Nav(300,150,0,0); //Center with Front and Arm
+//  lcd.clear();
+//  lcd.print("Im Here");
+//  delay(5000);
+//  
+//  lcd.clear();
+//  lcd.print("Turning off");
+//  delay(1500);
   
  
 //  
