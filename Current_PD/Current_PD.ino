@@ -12,6 +12,7 @@
   
   //instance of each servo
   Servo gripServo[3];
+  int relax[3] = {0};  // flag for zero'd finger (no block)
   
   class Fingers {
     public:
@@ -116,7 +117,7 @@
   
   void holdBlocks(){
     float NewPos[3] = {90, 90 , 90}; // var for change in servo pos
-    int relax[3] = {0};  // flag for zero'd finger (no block)
+   
     
     fill_current_arrays(); // reset avg arrays
     
@@ -144,14 +145,3 @@
     Finger[2].fill();
   }
 
-
-
-  
-//                                      Serial.print(i);  
-//                                      Serial.print("  OldPos: ");
-//                                      Serial.print(NewPos[i]);  
-//                                      Serial.print("  NewPos: "); 
-//                                      Serial.print(NewPos[i]);
-//                                      Serial.print("  Avg Current: "); 
-//                                      Serial.print(Finger[i].currentSense());
-//                                      Serial.println();

@@ -26,6 +26,10 @@
   #include <Pixy.h>
  
   #define ER_ARRAY_SIZE 7
+  #define SS_2 2
+  #define SS_3 3
+  #define SS_4 4
+  #define SS_5 5
   // initialize the library with the numbers of the interface pins
   LiquidCrystal lcd(41, 43, 45, 47, 49, 51);
 
@@ -102,15 +106,44 @@
         float Error_R_History[ER_ARRAY_SIZE];
         float Avg_ErT;
         float Avg_ErR;
+
+        int SSL;
         //////////////////////////////////////////////////
                             //sense distance for each side
-        void sensePings() {                       
-          Ping1 = sonar[PingPin1].ping_median();  // send multiple pulses, return median distance
-          Ping2 = sonar[PingPin2].ping_median();  
-          Ping1 = Ping1/29/2;                     // converts to cm
-          Ping2 = Ping2/29/2;
+        void sensePings() {  
+         int P1_lead = 0; int P1_total = 0;
+         int P2_lead = 0; int P2_total = 0;                      
+         digitalWrite(SSL, LOW);  // open communication (direct slave into interupt routine)
+         transferAndWait ('f');  // asks to turn pings on, and sets up the first byte transfer
+         transferAndWait (2);   //pings are on and first request is recieved  
+         P1_lead = transferAndWait (3); //first package comes in (leading P1 byte)
+         P1_lead <<= 8;                 //shift bits to make room for tailing byte
+         P1_total = transferAndWait (4); //second package comes in (trailing P1 byte)
+         P1_total = P1_lead | P1_total;   //combine lead and tail into 16bit
+         
+         //do the same for P2    IMPORTANT to notice that all messages are recieved 2 transfers after called for
+         P2_lead = transferAndWait (0);   //that is why there are two dummy commands sent with 0 here. 
+         P2_lead <<= 8; 
+         P2_total = transferAndWait (0);
+         P2_total = P2_lead | P2_total; 
+         digitalWrite(SSL, HIGH); // close communication, but pings will continue to read
+  
+          Ping1 = (float)P1_total;
+          Ping2 = (float)P2_total;
         }
-    
+        
+        void stopPings(){
+          digitalWrite(SSL, LOW);   
+          transferAndWait ('q');  // add command 
+          transferAndWait (2);  // add command
+          digitalWrite(SSL, HIGH);
+          
+        }
+       byte transferAndWait (const byte what){  // function does SPI transfer and delays enough to complete
+         byte a = SPI.transfer (what);
+         delayMicroseconds (20);
+         return a;
+      } 
         
         float PD_T(float setpoint){ // PD caculation for translation
           float Error, Prev_Error, Correction, NewSpeed;
@@ -180,10 +213,10 @@
    
   //intitiate sides:////////////////////////////////////////////////////
          //Pin1,  Pin2,  PT,   DT,   PR,     DR
-  Side Front {0,   1,   .1,   .05,   0.08 , 0.08, 0, 0,{},{},0,0};
-  Side Back  {2,   3,   .1,   .05,   0.08 , 0.08, 0, 0,{},{},0,0};
-  Side Arm   {4,   5,    1,    .1,    0.1,   0.1, 0, 0,{},{},0,0};
-  Side Leg   {6,   7,    1,    .1,    0.1,   0.1, 0, 0,{},{},0,0};
+  Side Front {0,   1,   .1,   .05,   0.08 , 0.08, 0, 0,{},{},0,0, SS_1};
+  Side Back  {2,   3,   .1,   .05,   0.08 , 0.08, 0, 0,{},{},0,0, SS_2};
+  Side Arm   {4,   5,    1,    .1,    0.1,   0.1, 0, 0,{},{},0,0, SS_3};
+  Side Leg   {6,   7,    1,    .1,    0.1,   0.1, 0, 0,{},{},0,0, SS_4};
   
   
   
@@ -204,6 +237,23 @@
       pinMode (Motor[i].backwardSpeedPin, OUTPUT);
       pinMode (Motor[i].forwardSpeedPin, OUTPUT);  
     }
+    
+    //All Ping SPI slave select pins
+    pinMode(SS_2, OUTPUT); 
+    digitalWrite(SS_2, HIGH);  
+    pinMode(SS_3, OUTPUT); 
+    digitalWrite(SS_3, HIGH);
+    pinMode(SS_4, OUTPUT); 
+    digitalWrite(SS_4, HIGH);
+    pinMode(SS_5, OUTPUT); 
+    digitalWrite(SS_5, HIGH);
+  // Put SCK, MOSI, SS pins into output mode
+  // also put SCK, MOSI into LOW state, and SS into HIGH state.
+  // Then put SPI hardware into Master mode and turn SPI on
+  SPI.begin ();
+
+  // Slow down the master a bit
+  SPI.setClockDivider(SPI_CLOCK_DIV8);
   }
   
   
