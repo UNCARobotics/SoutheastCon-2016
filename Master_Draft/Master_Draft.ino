@@ -35,24 +35,30 @@
 
   #define M0_IN1 48
   #define M0_IN2 49
+  #define M0_D2 4
 
   #define M1_IN1 34
   #define M1_IN2 35
+  #define M1_D2 5 
   
   #define M2_IN1 30
   #define M2_IN2 31
+  #define M2_D2 3
   
   #define M3_IN1 33
   #define M3_IN2 32
-  
-  #define M0_D2 4
-  #define M1_D2 5
-  
-  #define M2_D2 3
   #define M3_D2 2
   
   #define EN_M0_M1 46
   #define EN_M2_M3 22
+
+  //checking millis for loop time correction
+  long timer = 0;
+  long ct = 1;
+  #define MAXIMUM 15
+  bool flagger;
+
+  
   // initialize the library with the numbers of the interface pins
   LiquidCrystal lcd(39, 41, 43, 45, 47, 37);
 
@@ -124,7 +130,8 @@
         float Ping1;  //for storing distance
         float Ping2;
         
-        
+        float Error_T;
+        float Error_R;
         float Error_T_History[ER_ARRAY_SIZE];
         float Error_R_History[ER_ARRAY_SIZE];
         float Avg_ErT;
@@ -169,26 +176,34 @@
       } 
         
         float PD_T(float setpoint){ // PD caculation for translation
-          float Error, Prev_Error, Correction, NewSpeed;
+          float Prev_Error, Correction, NewSpeed;
           int T = 1; // condition for averaging translation in Avg_error function
           
-          Prev_Error = Error;
-          Error = (Ping1 + Ping2)/2 - setpoint; 
-          Avg_Error(Error, T);
-          Correction = P_T*(Error) + D_T*(Error - Prev_Error);
+          Prev_Error = Error_T;
+           Serial.print("PT  ");
+          Serial.println(Prev_Error);
+          Error_T = (Ping1 + Ping2)/2 - setpoint; 
+          Avg_Error(Error_T, T);
+          Correction = P_T*(Error_T) + D_T*(Error_T - Prev_Error);
           NewSpeed = BaseSpeed + Correction;
+         
+          Serial.print("ET  ");
+          Serial.println(Error_T);
+          Serial.print("C  ");
+          Serial.println(Correction);
+          Serial.println("");
           return NewSpeed;
         }
     
         
         float PD_R(){ // PD caculation for rotation
-          float Error, Prev_Error, Correction, NewSpeed;
+          float Prev_Error, Correction, NewSpeed;
           int R = 0;  // condition for averaging Rotatoin in Avg_error function
     
-          Prev_Error = Error; 
-          Error = Ping1 - Ping2;
-          Avg_Error(Error, R);
-          Correction = P_R*(Error) + D_R*(Error - Prev_Error);
+          Prev_Error = Error_R; 
+          Error_R = Ping1 - Ping2;
+          Avg_Error(Error_R, R);
+          Correction = P_R*(Error_R) + D_R*(Error_R - Prev_Error);
           NewSpeed = BaseSpeed + Correction; 
           return NewSpeed; //Positive is ClockWise
         }
@@ -236,12 +251,18 @@
    
   //intitiate sides:////////////////////////////////////////////////////
          //Pin1,  Pin2,  PT,   DT,   PR,     DR
-  Side Front {0,   1,    0,   0,   0,  0, 0, 0,{},{},0,0, SS_2};
-  Side Back  {2,   3,    0,   0,   0,  0, 0, 0,{},{},0,0, SS_3};
-  Side Arm   {4,   5,    0,   0,   0,  0, 0, 0,{},{},0,0, SS_4};
-  Side Leg   {6,   7,    0,   0,   0,  0, 0, 0,{},{},0,0, SS_5};
-  
-  
+  Side Front {0,   1,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_2};
+  Side Back  {2,   3,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_3};
+  Side Arm   {4,   5,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_4};
+  Side Leg   {6,   7,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_5};
+
+
+  // Good values
+          //Pin1,  Pin2,  PT,   DT,   PR,     DR
+//  Side Front {0,   1,    1,   4,   1,  0,  0, 0,{},{},0,0, SS_2};
+//  Side Back  {2,   3,    1,   4,   1,  0,  0, 0,{},{},0,0, SS_3};
+//  Side Arm   {4,   5,    1,   4,   0.5,  0,  0, 0,{},{},0,0, SS_4};
+//  Side Leg   {6,   7,    1,   4,   1,  0,  0, 0,{},{},0,0, SS_5};
   
   
   ////////////////////////////////////////////////SETUP///////////////////////////////////////////////////////////////
@@ -291,7 +312,7 @@
    ////////////////////////////////////////////////////LOOP/////////////////////////////////////////////////////// 
   void loop(){ 
     // variables to make calling Rotation function easier to read
-    int CCW = 1, CW = 0;
+    int CCW = 0, CW = 1;
     int F = 0, A = 1, B = 2, L = 3;
     
   lcd.clear();
@@ -325,16 +346,16 @@
 //  delay(3000);
 //  stopDrive();
 //  delay(5000);
-  
-  Nav(150,0,0,150); //Navigate out of tunnel using Front and Leg
-  lcd.clear();
-  lcd.print("here");
-  delay(5000);
 //  
-//  Rotate(A, CCW, 500); //Rotate Arm to Bardge C
+//  Nav(150,0,0, 150); //Navigate out of tunnel using Front and Leg
 //  lcd.clear();
-//  lcd.print("Rotated");
+//  lcd.print("here");
 //  delay(5000);
+//  
+  Rotate(L, CW,0); //Rotate Arm to Bardge C
+  lcd.clear();
+  lcd.print("Rotated");
+  delay(5000);
 //  
 //  Nav(300,150,0,0); //Center with Front and Arm
 //  lcd.clear();
@@ -359,7 +380,7 @@
   }
   
   
-  
+
   ///////////////////////////////////////////////////NAVIGATION/////////////////////////////////////////////////////////
   
   void Nav(float F, float B, float A, float L){
@@ -372,6 +393,9 @@
     fill_error_arrays();
     
     while (1){ 
+        //  timer = millis();
+      //Process_PD();
+      
       Ns_R = 0;
       Avg_ErR = 0;
       numParameters = 0;    // reset each time you take a measurment 
@@ -425,7 +449,20 @@
       flipMotors();
       printReadings(F,B,A,L); //print the Sonar readings to the LCD screen
       setDrive(); //everything so far stored motor change data, now tell the motors to use that data
-     
+//
+//      if(!(ct++%1000)){
+//      lcd.clear();
+//      lcd.print(millis());
+//      }
+
+      
+//      flagger = LOW;
+//      while((millis()-timer)<(MAXIMUM)){ flagger = HIGH;}
+//      if(flagger==LOW){
+//        lcd.clear();
+//        lcd.print("Exceeded MAX");
+//      }
+
     }
   }
   
@@ -435,11 +472,15 @@
   void Rotate(int side, int Spin, int roTime){
     int RoSpeed = 0;
     float Avg_ErR;
+    Serial.println("rotate");
     Bump(Spin, roTime); // give the robot a kick in the right direction
 
     fill_error_arrays(); // resets error arrays
     
     while(1){
+
+      lcd.clear();
+      lcd.print("la");
       
       //cases for each side
       if (side == 0){       
@@ -485,6 +526,7 @@
     digitalWrite(EN_M2_M3, HIGH);
     
     for(int i=0;i<4;i++){
+      //Serial.println(Motor[i].Speed);
       analogWrite(Motor[i].SpeedPin, Motor[i].Speed); 
     }
   }
@@ -496,13 +538,16 @@
   }
   
   void Bump(int spin, int RoTime){
+
+    lcd.clear();
+    lcd.print(spin);
     int x;
     int y;
-     
-    if (spin == 1){                         // if CCW
+    Serial.println("bump");
+    if (spin == 0){                         // if CCW
      x = LOW;  y = HIGH;
     }
-    else if (spin == 0){                    // if CW
+    else if (spin == 1){                    // if CW
      x = HIGH; y = LOW;
     }
       
@@ -516,9 +561,12 @@
         digitalWrite(Motor[i].Inv_Forward_Pin, x); 
        
     }
+    for(int i=0;i<4;i++){       // Set Bump Speed
+      Motor[i].Speed = 100; 
+    }
     setDrive();
     delay(RoTime);  // rotate for a certian amount of time before stoping 
-    stopDrive(); 
+    stopDrive();
   }
   
   void flipMotors(){ 
@@ -737,9 +785,15 @@
           index=0;
           dataReady = HIGH;
          }
+
+   
+         lcd.print("v");
      }
 
     if(dataReady){
+
+      lcd.clear();
+      lcd.print("im here");
       // setting value of magnitude
       scale = (float)bufferArray[9];
 
@@ -778,6 +832,9 @@
         DR_total = DR_total | bufferArray[8];
         Front.D_R = (float)DR_total/Mag;
         Back.D_R = (float)DR_total/Mag;
+
+         lcd.print("yoyo");
+
       }   
   
   // if side is Arm
