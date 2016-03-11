@@ -180,18 +180,11 @@
           int T = 1; // condition for averaging translation in Avg_error function
           
           Prev_Error = Error_T;
-           Serial.print("PT  ");
-          Serial.println(Prev_Error);
           Error_T = (Ping1 + Ping2)/2 - setpoint; 
           Avg_Error(Error_T, T);
           Correction = P_T*(Error_T) + D_T*(Error_T - Prev_Error);
           NewSpeed = BaseSpeed + Correction;
          
-          Serial.print("ET  ");
-          Serial.println(Error_T);
-          Serial.print("C  ");
-          Serial.println(Correction);
-          Serial.println("");
           return NewSpeed;
         }
     
@@ -526,7 +519,6 @@
     digitalWrite(EN_M2_M3, HIGH);
     
     for(int i=0;i<4;i++){
-      //Serial.println(Motor[i].Speed);
       analogWrite(Motor[i].SpeedPin, Motor[i].Speed); 
     }
   }
