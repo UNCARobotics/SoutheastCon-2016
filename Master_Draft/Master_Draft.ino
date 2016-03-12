@@ -25,7 +25,7 @@
   #include <SPI.h>  
   #include <Pixy.h>
  
-  #define ER_ARRAY_SIZE 7
+  #define ER_ARRAY_SIZE 30
   
   //Side Pings
   #define SS_2 38 
@@ -231,6 +231,7 @@
         
         float Error_T;
         float Error_R;
+        
         float Error_T_History[ER_ARRAY_SIZE];
         float Error_R_History[ER_ARRAY_SIZE];
         float Avg_ErT;
@@ -290,10 +291,10 @@
         
         float PD_R(){ // PD caculation for rotation
           float Prev_Error, Correction, NewSpeed;
-          int R = 0;  // condition for averaging Rotatoin in Avg_error function
+          int R = 0;  // condition for averaging Rotation in Avg_error function
     
           Prev_Error = Error_R; 
-          Error_R = Ping1 - Ping2;
+          Error_R = -(Ping1 - Ping2);
           Avg_Error(Error_R, R);
           Correction = P_R*(Error_R) + D_R*(Error_R - Prev_Error);
           NewSpeed = BaseSpeed + Correction; 
@@ -339,6 +340,7 @@
              Error_R_History[i]=100;
           }
         }
+
   };  
 
 ///////////////////////////////////////////INITIALIZATIONS/////////////////////////////////////  
@@ -367,17 +369,14 @@ struct trainCar box[2];
   Side Back  {2,   3,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_3};
   Side Arm   {4,   5,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_4};
   Side Leg   {6,   7,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_5};
-
-
+   
   // Good values
           //Pin1,  Pin2,  PT,   DT,   PR,     DR
 //  Side Front {0,   1,    1,   4,   1,  0,  0, 0,{},{},0,0, SS_2};
 //  Side Back  {2,   3,    1,   4,   1,  0,  0, 0,{},{},0,0, SS_3};
 //  Side Arm   {4,   5,    1,   4,   0.5,  0,  0, 0,{},{},0,0, SS_4};
 //  Side Leg   {6,   7,    1,   4,   1,  0,  0, 0,{},{},0,0, SS_5};
-
-  
-  
+    
   ////////////////////////////////////////////////SETUP///////////////////////////////////////////////////////////////
   
   void setup() {
@@ -438,37 +437,21 @@ struct trainCar box[2];
   lcd.print("Ready...1");
   delay(1000);
 
-//  //drive forward for limit testing
-//  digitalWrite(M0_IN1, LOW);
-//  digitalWrite(M0_IN2, HIGH);
-//
-//  digitalWrite(M1_IN1, LOW);
-//  digitalWrite(M1_IN2, HIGH);
-//
-//  digitalWrite(M2_IN1, LOW);
-//  digitalWrite(M2_IN2, HIGH);
-//
-//  digitalWrite(M3_IN1, LOW);
-//  digitalWrite(M3_IN2, HIGH);
-//
-//
-//  analogWrite(M0_D2, 15);
-//  analogWrite(M1_D2, 15);
-//  analogWrite(M2_D2, 15);
-//  analogWrite(M3_D2, 15);
-//  delay(3000);
-//  stopDrive();
-//  delay(5000);
-//  
+
+  Nav(1760, 0, 50, 0);
+  lcd.clear();
+  lcd.print("here");
+  delay(5000);
+ 
 //  Nav(150,0,0, 150); //Navigate out of tunnel using Front and Leg
 //  lcd.clear();
 //  lcd.print("here");
 //  delay(5000);
-//  
-  Rotate(L, CW,0); //Rotate Arm to Bardge C
-  lcd.clear();
-  lcd.print("Rotated");
-  delay(5000);
+//
+//  Rotate(A, CW,1000); //Rotate Arm to Bardge C
+//  lcd.clear();
+//  lcd.print("Rotated");
+//  delay(5000);
 //  
 //  Nav(300,150,0,0); //Center with Front and Arm
 //  lcd.clear();
@@ -591,9 +574,6 @@ struct trainCar box[2];
     fill_error_arrays(); // resets error arrays
     
     while(1){
-
-      lcd.clear();
-      lcd.print("la");
       
       //cases for each side
       if (side == 0){       
@@ -651,8 +631,6 @@ struct trainCar box[2];
   
   void Bump(int spin, int RoTime){
 
-    lcd.clear();
-    lcd.print(spin);
     int x;
     int y;
     Serial.println("bump");
@@ -837,8 +815,9 @@ struct trainCar box[2];
   void gripperCommand(byte x){
     if (x=='s'){ 
       int pressed = 0;
-      while(pressed==4){
+      while(pressed != 4){
         pressed = 0;
+        //armMovesDown();
         pressed += Grippers[0].buttonCheck();
         pressed += Grippers[1].buttonCheck();
         delayMicroseconds(50);
