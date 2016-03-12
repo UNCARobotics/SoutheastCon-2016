@@ -27,12 +27,17 @@
  
   #define ER_ARRAY_SIZE 7
   
-  
-  #define SS_2 38
+  //Side Pings
+  #define SS_2 38 
   #define SS_3 40
   #define SS_4 42
   #define SS_5 44
 
+  #define SS_BG1 15
+  #define SS_BG2 16 
+  #define SS_AG1 17 
+  #define SS_AG2 18 
+    
   #define M0_IN1 48
   #define M0_IN2 49
   #define M0_D2 4
@@ -65,25 +70,9 @@
   Pixy pixy;
 
   struct trainCar{
-  char color[7]; 
+  byte color; 
   int xpos; 
   int width;
-  };
-  
-  struct trainCar box[2];
-  int PixyFlag = 0;
-  int gapCount = 0;
-  
-  // initialize Sonar with NewPing Library
-  NewPing sonar[8] = {
-    NewPing(22, 22),
-    NewPing(24, 24),
-    NewPing(26, 26),
-    NewPing(28, 28),
-    NewPing(30, 30),
-    NewPing(32, 32),
-    NewPing(34, 34),
-    NewPing(36, 36)
   };
   
   float BaseSpeed = 0;
@@ -98,20 +87,131 @@
     int SpeedPin;
   };
   
-  //Motor initilization (Picture Below shows motor numbers);
+  //Motor numbers(Picture Below shows motor numbers);
   //        F
   //    ||-2 1-|| 
   // A  ||-3 0-||   L
   //        B
   
-  Motors Motor[4] ={
-    { LOW, HIGH, LOW, M0_IN1, M0_IN2, M0_D2},
-    { LOW, HIGH, LOW, M1_IN1, M1_IN2, M1_D2},
-    { LOW, HIGH, LOW, M2_IN1, M2_IN2, M2_D2},
-    { LOW, HIGH, LOW, M3_IN1, M3_IN2, M3_D2}
-  }; 
+
   ////////////////////////////////////////////END OF INITIALIZATION///////////////////////////////////////////////////
-  
+  class Gripperset {
+   public: 
+    int SSL;
+    int SS_B;
+    int AlphaColors[3];
+    int BetaColors[3];
+    byte Alpha; 
+    byte Beta;
+    
+    byte transferAndWait (const byte what){  // function does SPI transfer and delays enough to complete
+         byte a = SPI.transfer (what);
+         delayMicroseconds (20);
+         return a;
+      } 
+      
+    int buttonCheck(){
+      byte checkA = 0; byte checkB = 0;
+      int touchdown = 0;  
+        digitalWrite(SSL, LOW);   
+          checkA =transferAndWait ('s');  // 
+        digitalWrite(SSL, HIGH);
+        
+        digitalWrite(SS_B, LOW);   
+          checkB =transferAndWait ('s');  // 
+        digitalWrite(SS_B, HIGH);
+        if (checkA == B11110000) touchdown++;
+        if (checkB == B11110000) touchdown++; 
+        return touchdown;
+     }
+    
+    void senseColors(){
+        digitalWrite(SSL, LOW);   
+          transferAndWait ('c');  // 
+          transferAndWait (0);
+          transferAndWait (0);
+        digitalWrite(SSL, HIGH);
+      
+    }
+    
+    void manageColors(){
+       byte decoder = B00110000;
+       //get colors
+        digitalWrite(SSL, LOW);   
+          transferAndWait (1);  // 
+          transferAndWait (2);
+          Alpha = transferAndWait (0);
+          Beta = transferAndWait (0);
+        digitalWrite(SSL, HIGH); 
+
+        //unpack colors
+        for (int i=0;i<3;i++){
+          for(int j=4;i<3;j-2){
+              AlphaColors[i] = Alpha & decoder;
+              AlphaColors[i]>>=j;
+              decoder >>= 2;
+              
+            }
+        }
+        decoder = B00110000; // reset decoder
+        
+        for (int i=0;i<3;i++){
+          for(int j=4;i<3;j-2){
+            BetaColors[i] = Beta & decoder;
+            BetaColors[i]>>=j;
+            decoder >>= 2;
+            
+          }
+        }
+        //send beta colors to the beta slave
+        digitalWrite(SS_B, LOW);   
+          transferAndWait (Beta);  // 
+          transferAndWait (0);
+          transferAndWait (0);
+        digitalWrite(SS_B, HIGH);  
+        
+    }
+    
+    bool holdCheck(){
+      byte checkA = 0; byte checkB = 0;
+      bool holding = 0;  
+        digitalWrite(SSL, LOW);   
+          checkA =transferAndWait ('h');  // 
+        digitalWrite(SSL, HIGH);
+        
+        digitalWrite(SS_B, LOW);   
+          checkB =transferAndWait ('h');  // 
+        digitalWrite(SS_B, HIGH);
+        holding = ((checkA == B00001111) & (checkB == B00001111)) ? 1 : 0;
+        return holding;
+    }
+    
+    void dropColor(byte x){
+        digitalWrite(SS_B, LOW);   
+          transferAndWait (x);  
+          transferAndWait (0);
+        digitalWrite(SS_B, HIGH);
+        
+        digitalWrite(SSL, LOW);   
+          transferAndWait (x);   
+          transferAndWait (0);
+        digitalWrite(SSL, HIGH);
+        
+    }
+    
+    void dropAll(){
+      digitalWrite(SS_B, LOW);   
+        transferAndWait ('a');  
+        transferAndWait (0);
+      digitalWrite(SS_B, HIGH);
+      
+      digitalWrite(SSL, LOW);   
+        transferAndWait ('a');   
+        transferAndWait (0);
+      digitalWrite(SSL, HIGH);
+    }
+    
+  };
   
   
   
@@ -240,9 +340,29 @@
              Error_R_History[i]=100;
           }
         }
-  };   
-   
-  //intitiate sides:////////////////////////////////////////////////////
+  };  
+
+///////////////////////////////////////////INITIALIZATIONS/////////////////////////////////////  
+//Pixy blocks and globals   
+struct trainCar box[2];
+  float Pixy_Error = 0;
+  int PixyFlag = 0;
+  int gapCount = 0;
+  
+// Motors
+    Motors Motor[4] ={
+    { LOW, HIGH, LOW, M0_IN1, M0_IN2, M0_D2},
+    { LOW, HIGH, LOW, M1_IN1, M1_IN2, M1_D2},
+    { LOW, HIGH, LOW, M2_IN1, M2_IN2, M2_D2},
+    { LOW, HIGH, LOW, M3_IN1, M3_IN2, M3_D2}
+  }; 
+
+   //Grippers
+   Gripperset Grippers[2] = {
+    {SS_AG1, SS_BG1, {}, {}, 0, 0},
+    {SS_AG2, SS_BG2, {}, {}, 0, 0}
+   }; 
+  //Sides
          //Pin1,  Pin2,  PT,   DT,   PR,     DR
   Side Front {0,   1,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_2};
   Side Back  {2,   3,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_3};
@@ -256,6 +376,7 @@
 //  Side Back  {2,   3,    1,   4,   1,  0,  0, 0,{},{},0,0, SS_3};
 //  Side Arm   {4,   5,    1,   4,   0.5,  0,  0, 0,{},{},0,0, SS_4};
 //  Side Leg   {6,   7,    1,   4,   1,  0,  0, 0,{},{},0,0, SS_5};
+
   
   
   ////////////////////////////////////////////////SETUP///////////////////////////////////////////////////////////////
@@ -660,10 +781,10 @@
           x = pixy.blocks[j].signature;
           
           //place color string in struct
-               if (x==1) strcpy(box[j].color, "Red");
-          else if (x==2) strcpy(box[j].color, "Yellow");
-          else if (x==3) strcpy(box[j].color, "Blue");
-          else if (x==4) strcpy(box[j].color, "Green");
+               if (x==1) box[j].color = 'r';
+          else if (x==2) box[j].color = 'y';
+          else if (x==3) box[j].color = 'b';
+          else if (x==4) box[j].color = 'g';
           
           // get x position and width of block
           box[j].xpos = pixy.blocks[j].x;  
@@ -695,22 +816,61 @@
   void checkGapDrop(){
     int approach = box[1].width-box[0].width;
     if(approach <= 0){
-      dropColor(box[0].color);  //function to SPI transfer the color to be dropped to the grippers
+     // dropColor(box[0].color);  //change when gripper class is
       gapCount++;
       PixyFlag = 1;
     }
   }
   float Pixy_PD(){
-      float Error, Prev_Error, Correction, NewSpeed;
+      float Prev_Error, Correction, NewSpeed;
       float P_T = 10; float D_T = 0.1;
       int T = 1; // condition for averaging translation in Avg_error function
       
-      Prev_Error = Error;
-      Error = (float)(box[1].width-box[0].width);
-      Front.Avg_Error(Error, T);
-      Correction = P_T*(Error) + D_T*(Error - Prev_Error);
+      Prev_Error = Pixy_Error;
+      Pixy_Error = (float)(box[1].width-box[0].width);
+      Front.Avg_Error(Pixy_Error, T);
+      Correction = P_T*(Pixy_Error) + D_T*(Pixy_Error - Prev_Error);
       NewSpeed = BaseSpeed + Correction;
       return NewSpeed;
+  }
+
+  ///////////////////////////////////////////////Gripper/////////////////////////////////////////////////////////////
+  void gripperCommand(byte x){
+    if (x=='s'){ 
+      int pressed = 0;
+      while(pressed==0){
+        pressed = 0;
+        pressed += Grippers[0].buttonCheck();
+        pressed += Grippers[1].buttonCheck();
+        delayMicroseconds(50);
+      }
+    }
+    if (x=='c'){ 
+      Grippers[0].senseColors();
+      Grippers[1].senseColors();
+    }
+    if (x=='m'){ 
+      Grippers[0].manageColors();
+      Grippers[1].manageColors();
+    }
+    if (x=='h'){ 
+      int holding = 0;
+      while(holding != 2){
+        holding = 0;
+        holding += Grippers[0].holdCheck();
+        holding += Grippers[1].holdCheck();
+        delayMicroseconds(1000);
+      }
+      
+    }
+    if ((x=='r') | (x=='y') | (x=='b') | (x=='g')){ 
+      Grippers[0].dropColor(x);
+      Grippers[1].dropColor(x);
+    }
+    if (x=='a'){ 
+      Grippers[0].dropAll();
+      Grippers[1].dropAll();
+    }
   }
   ///////////////////////////////////////////////Print Sonar Readings////////////////////////////////////////////////
   void printReadings(float F, float B, float A, float L) {
@@ -756,9 +916,7 @@
     }
   }
 
- void dropColor(char *x){
-    //dummy function for compiling 
-  }
+
   
  void Process_PD(){
     // for temporarily holding values of constants that have been recieved from processing
@@ -859,5 +1017,5 @@
          dataReady = LOW;
     }
  }
-  
+
 

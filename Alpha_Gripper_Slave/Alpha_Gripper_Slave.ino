@@ -197,7 +197,6 @@ ISR (SPI_STC_vect)
     
   case 'h':
     command = c;
-    go = (Finger[0].grabbed + Finger[1].grabbed + Finger[2].grabbed);
     SPDR = (go == 3) ? B00001111 : 0;
     go = 0;
     break;  
@@ -296,6 +295,7 @@ ISR (SPI_STC_vect)
       Finger[i].holdBlocks();
       button = LOW;
       }
+      go = (Finger[0].grabbed + Finger[1].grabbed + Finger[2].grabbed);
     }
       
   }
