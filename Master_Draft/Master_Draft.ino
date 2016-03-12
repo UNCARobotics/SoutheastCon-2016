@@ -114,14 +114,15 @@
       byte checkA = 0; byte checkB = 0;
       int touchdown = 0;  
         digitalWrite(SSL, LOW);   
-          checkA =transferAndWait ('s');  // 
+          checkA =transferAndWait ('s');  
+          checkA =transferAndWait ('s');  
         digitalWrite(SSL, HIGH);
         
         digitalWrite(SS_B, LOW);   
-          checkB =transferAndWait ('s');  // 
+          transferAndWait ('s');
+          transferAndWait (checkA);  // 
         digitalWrite(SS_B, HIGH);
-        if (checkA == B11110000) touchdown++;
-        if (checkB == B11110000) touchdown++; 
+        touchdown = (checkA == B11110000) ? 1 : 0;
         return touchdown;
      }
     
@@ -815,7 +816,7 @@ struct trainCar box[2];
   void gripperCommand(byte x){
     if (x=='s'){ 
       int pressed = 0;
-      while(pressed != 4){
+      while(pressed != 2){
         pressed = 0;
         //armMovesDown();
         pressed += Grippers[0].buttonCheck();

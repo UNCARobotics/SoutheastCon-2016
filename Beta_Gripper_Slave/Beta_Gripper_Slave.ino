@@ -169,11 +169,11 @@ ISR (SPI_STC_vect)
   break;  
   
   case 's':
-    command = c;
-    SPDR = (button == HIGH) ? B11110000 : 0; 
-    task = (button == HIGH) ? 1 : 0;
+    command = 0;
+    SPDR = 0;
+    task = (c == B11110000) ? 1 : 0;
     break;
-    
+
   case 'c': //Close and read Color
     command = 1;
     SPDR = 0;
