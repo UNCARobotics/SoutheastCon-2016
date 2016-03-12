@@ -194,13 +194,13 @@ ISR (SPI_STC_vect)
   // Send Alpha Colors to Master ///////////////////////
   case 1: 
     command = c; // will be 2 next
-    SPDR = package[0];  
+    SPDR = package[0];  //Alpha colors
     break;
 
 // Send Beta Colors to Master //////////////////////////    
   case 2: 
     command = c; // will be 0 next
-    SPDR = package[1]; 
+    SPDR = package[1]; //Beta colors
     task = 2; //After reading and sending colors, Start PD_Gripping //
     break;
     
@@ -302,7 +302,7 @@ ISR (SPI_STC_vect)
     
     if(task == 1){ // Close fingers and wait ///////////////////////
      
-      for(int i=0;i<3;i++){ //put guts in interrupt without function call
+      for(int i=0;i<3;i++){ 
       Finger[i].CloseToRead();
       }
       while(task == 1){
@@ -313,7 +313,7 @@ ISR (SPI_STC_vect)
     
     if(task == 2){ // PD-Controlled carrying blocks //////////////////////////////////////
       
-      for(int i=0;i<3;i++){ //put guts in interrupt without function call
+      for(int i=0;i<3;i++){ 
       Finger[i].holdBlocks();
       button = LOW; // reset button
       }

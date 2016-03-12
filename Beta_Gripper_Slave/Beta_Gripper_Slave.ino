@@ -2,11 +2,11 @@
 #include <Wire.h> // for current sensing
 #include <Adafruit_INA219.h> // for current sensing
 
-#define CUR_ARRAY_SIZE 20
-#define POS_ARRAY_SIZE 50
-#define READY_POS 100
-#define COLOR_READ_POS 40
-#define ER_ARRAY_SIZE 30
+#define CUR_ARRAY_SIZE 20 //array for averaging current
+#define POS_ARRAY_SIZE 50 //array for averaging Servo Position
+#define READY_POS 100 //open and ready for picking up
+#define COLOR_READ_POS 40 //mostly closed to read the color sensor
+#define ER_ARRAY_SIZE 30 //array for averaging error
 
 enum {
   RED,
@@ -35,10 +35,10 @@ class AlphaGripper {
     float Pos[POS_ARRAY_SIZE]; //current is bouncy, averaging is needed
     float NewPos; //after caculation, the new position to write to the servos 
     
-    int grabbed;
+    int grabbed; // flag for achieving a PD controlled grip
 
     Servo gripServo;     // a servo for the grippers
-    Adafruit_INA219 ina219; // a current sensor 
+    Adafruit_INA219 ina219; // a current sensor for monitoring servo tourqe
     
     void initSensors(){  // attaches servo and current sensor to the board
       gripServo.attach(ServoPin);
@@ -58,10 +58,11 @@ class AlphaGripper {
     float Gripper_PD() { // PD caculation for translation
       float Prev_Error, Avg_Error, Addition, NewPos;
 
+      grabbed = (Avg_Error < 50) ? 1 : 0; //check avg to see if holding block
+
       Prev_Error = Error;
       Error = currentSense() - setpoint;
       Avg_Error = runningAvg(Error, ER_ARRAY_SIZE, Error_History);
-      grabbed = (Avg_Error < 50) ? 1 : 0;
       Addition = P * (Error) + D * (Error - Prev_Error);
       return Addition;
     }
@@ -130,12 +131,10 @@ AlphaGripper Finger[3] = {
 };
 
 volatile byte command = 0;   // stores value recieved from master, tells slave what case to run
-volatile byte colors = B11000000;
+volatile byte colors = B11000000; //var recieves colors from master
 volatile int task = 0; //which functions should it be completing 
-volatile int dropColor;
-volatile int go = 0;
-bool button; 
-byte package[2] = {0};
+volatile int dropColor; 
+volatile int go = 0; // flag for having a grip on the blocks
 
 int myColors[3] = {RED, RED, RED};
 
@@ -145,7 +144,6 @@ void setup() {
   for(int i=0; i<3; i++){
     Finger[i].initSensors();
   }
-  pinMode(A1, INPUT);
   pinMode(MISO, OUTPUT);
 
   // turn on SPI in slave mode
@@ -162,36 +160,41 @@ ISR (SPI_STC_vect)
  
   switch (command)
   {
-  // no command? then this is the command
+  // no command? then this is the command ///////////////////////////
   case 0:
   command = c;
   SPDR = 0;
   break;  
-  
+
+  // Waiting for button pressed signal from alpha///////////////////
   case 's':
     command = 0;
     SPDR = 0;
     task = (c == B11110000) ? 1 : 0;
     break;
 
-  case 'c': //Close and read Color
-    command = 1;
+ // Get Colors from Alpha ///////////////////////////////////////////
+  case 'c': 
+    command = 1; // will be 1 next
     SPDR = 0;
     colors = c; 
     break;
-    
-  case 1: //Close and read Color
-    command = 0;
+ 
+// Set task to Manage colors    
+  case 1: 
+    command = 0; // will be 0 next
     SPDR = 0;
-    task = 3; 
+    task = 3; //do color tasks, then return to closed position (task 1)
     break;
 
+// Checking for a Good Grip on All Blocks //   
   case 'h':
     command = c;
     SPDR = (go == 3) ? B00001111 : 0;
     break;  
- 
-  case 'r': //DROP RED       
+
+ // DROP RED /////////////////////////////////
+  case 'r':      
     command = c;
     dropColor = RED;
     Finger[0].relax = (myColors[0] == dropColor) ? 1 : 0; //put guts in interrupt without function call
@@ -201,8 +204,9 @@ ISR (SPI_STC_vect)
     Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[0] == dropColor)) ? 1 : 0; 
     Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[0].relax == 1)) ? 1 : 0;
     break;
-    
-  case 'y': //DROP YELLOW       
+
+ // DROP YELLOW /////////////////////////////////      
+  case 'y':       
     command = c;
     dropColor = YELLOW;
     Finger[0].relax = (myColors[0] == dropColor) ? 1 : 0; //put guts in interrupt without function call
@@ -212,8 +216,9 @@ ISR (SPI_STC_vect)
     Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[0] == dropColor)) ? 1 : 0; 
     Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[0].relax == 1)) ? 1 : 0;
     break;
-    
-  case 'b': //DROP BLUE         
+
+  // DROP BLUE ///////////////////////////////// 
+  case 'b':       
     command = c;
     dropColor = BLUE;
     Finger[0].relax = (myColors[0] == dropColor) ? 1 : 0; //put guts in interrupt without function call
@@ -223,8 +228,9 @@ ISR (SPI_STC_vect)
     Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[0] == dropColor)) ? 1 : 0; 
     Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[0].relax == 1)) ? 1 : 0;
     break;
-    
-  case 'g': //DROP GREEN        
+
+  // DROP GREEN /////////////////////////////////     
+  case 'g':        
     command = c;
     dropColor = GREEN;
     Finger[0].relax = (myColors[0] == dropColor) ? 1 : 0; //put guts in interrupt without function call
@@ -234,8 +240,9 @@ ISR (SPI_STC_vect)
     Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[0] == dropColor)) ? 1 : 0; 
     Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[0].relax == 1)) ? 1 : 0;
     break;
-    
- case 'a': //DROP ALL
+
+// DROP ALL ///////////////////////////////// (always do before getting new blocks)  
+ case 'a': 
     command = c;
 //    for(int i=0;i<3;i++){ //put guts in interrupt without function call
 //    Finger[i].relax = 1; //in case hold function finishes running after interrupt
@@ -247,18 +254,15 @@ ISR (SPI_STC_vect)
     break;
     
   } // end of switch
-}  // end of Interupt //////////////////////////////////////////////////////////////////
+} 
+// END OF INTERUPT //////////////////////////////////////////////////////////////////
 
 
-
-
-  void loop() {//////////////LOOOOOOOOOOOOOP///////////////////////////////////////////
+// LOOP////////////////////////////////////////////////////////////////////////////
+  void loop() {
     
-    //Defalt when Grippers are not being used
-    if (task == 0){  
-      if (button == LOW){
-        button == digitalRead(A1);
-      }
+    
+    if (task == 0){  // Defalt when Grippers are not being used ////////////////////////
       //everything is reset     
       for(int i=0;i<3;i++){ 
       Finger[i].relax = 0;
@@ -269,9 +273,10 @@ ISR (SPI_STC_vect)
       fill_arrays();
     }
   
-    //Close fingers, take color readings and wait
-    if(task == 1){
-      for(int i=0;i<3;i++){ //put guts in interrupt without function call
+    
+    if(task == 1){ //Close fingers, take color readings and wait/////////////////////////////
+      
+      for(int i=0;i<3;i++){ 
       Finger[i].CloseToRead();
       }
       while(task == 1){
@@ -279,15 +284,16 @@ ISR (SPI_STC_vect)
       } 
     }
     
-    // PD-Controlled carrying blocks
-    if(task == 2){
-      for(int i=0;i<3;i++){ //put guts in interrupt without function call
+    
+    if(task == 2){ // PD-Controlled carrying blocks//////////////////////////////////////////
+      
+      for(int i=0;i<3;i++){ 
       Finger[i].holdBlocks();
-      button = LOW;
       }
-      go = (Finger[0].grabbed + Finger[1].grabbed + Finger[2].grabbed);
+      go = (Finger[0].grabbed + Finger[1].grabbed + Finger[2].grabbed); // how many blocks grabbed?
     }
-    if(task == 3){
+    
+    if(task == 3){ // Decode the color byte sent from master via ALpha, store in array ///////////
         byte decoder = B00110000; // reset decoder
         
         for (int i=0;i<3;i++){
@@ -297,7 +303,7 @@ ISR (SPI_STC_vect)
             decoder >>= 2;
           }
         }    
-      task = 2;
+        task = 2; //After managing colors, begin to hold the blocks
     }
       
   }
@@ -307,8 +313,7 @@ void fill_arrays() {
     Finger[i].fill();
   }
 }
-
-
+//  END///////////
 
 
 

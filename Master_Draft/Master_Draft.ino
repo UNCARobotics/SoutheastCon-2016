@@ -97,12 +97,12 @@
   ////////////////////////////////////////////END OF INITIALIZATION///////////////////////////////////////////////////
   class Gripperset {
    public: 
-    int SSL;
-    int SS_B;
-    int AlphaColors[3];
-    int BetaColors[3];
-    byte Alpha; 
-    byte Beta;
+    int SSL; //Slave select for the Alpha
+    int SS_B; //Slave select for it's Beta
+    int AlphaColors[3];  //Colors sent from Alpha to display
+    int BetaColors[3]; //Beta Colors sent from Alpha. These will be displayed and sent to beta
+    byte Alpha; //byte holding encoded colors for Alpha
+    byte Beta; //byte holding encoded colors for Beta
     
     byte transferAndWait (const byte what){  // function does SPI transfer and delays enough to complete
          byte a = SPI.transfer (what);
@@ -110,52 +110,59 @@
          return a;
       } 
       
-    int buttonCheck(){
-      byte checkA = 0; byte checkB = 0;
+    int buttonCheck(){ // Looking for Button on Alpha, telling Beta///////////////////
+      byte checkA = 0; //message recieved from Alpha 
       int touchdown = 0;  
         digitalWrite(SSL, LOW);   
-          checkA =transferAndWait ('s');  
-          checkA =transferAndWait ('s');  
+          checkA =transferAndWait ('s');  //request button condition
+          checkA =transferAndWait ('s');  //recieve button condition 
+          //after frist transfer it could recieve on either transfer
         digitalWrite(SSL, HIGH);
+        // Master will recieve B11110000, if button is pressed
+        //Next we let the Beta know if the button was pressed
         
         digitalWrite(SS_B, LOW);   
-          transferAndWait ('s');
-          transferAndWait (checkA);  // 
+          transferAndWait ('s'); //ready Beta for transfer
+          transferAndWait (checkA);  //send it Alpha button condition
         digitalWrite(SS_B, HIGH);
+        
+        //check if the message meets condition 
         touchdown = (checkA == B11110000) ? 1 : 0;
-        return touchdown;
+        return touchdown; 
      }
     
-    void senseColors(){
+    void senseColors(){ // Tell alpha to fire color sensors /////////////
         digitalWrite(SSL, LOW);   
-          transferAndWait ('c');  // 
-          transferAndWait (0);
+          transferAndWait ('c');   //prep Alpha to take color readings
+          transferAndWait (0);    //take color readings 
         digitalWrite(SSL, HIGH);
       
     }
     
-    void manageColors(){
+    void manageColors(){ // Request color readings from Alpha ///////////
        byte decoder = B00110000;
-       //get colors
+       
         digitalWrite(SSL, LOW);   
-          transferAndWait (1);  // 
-          transferAndWait (2);
-          Alpha = transferAndWait (0);
-          Beta = transferAndWait (0);
+          transferAndWait (1);  // request Alpha send packages
+          transferAndWait (2);  //Alpha preps package[0]
+          Alpha = transferAndWait (0); //recieve alpha colors, prep package[1]
+          Beta = transferAndWait (0); // recieve beta colors 
         digitalWrite(SSL, HIGH); 
 
-        //unpack colors
-        for (int i=0;i<3;i++){
-          for(int j=4;i<3;j-2){
-              AlphaColors[i] = (int)(Alpha & decoder);
-              AlphaColors[i]>>=j;
-              decoder >>= 2;
+        
+        for (int i=0;i<3;i++){ //unpack 3 alpha colors
+          for(int j=4;i<3;j-2){ //change bit shifting by 2 each time
+            //fill color array by viewing byte Alpha with the decoder mask
+           
+              AlphaColors[i] = (int)(Alpha & decoder); 
+              AlphaColors[i]>>=j; //shift decoded number until its on 2 bits
+              decoder >>= 2;  //shift the mask down to the next 2 bits
               
             }
         }
         decoder = B00110000; // reset decoder
         
-        for (int i=0;i<3;i++){
+        for (int i=0;i<3;i++){ // unpack beta colors as above
           for(int j=4;i<3;j-2){
             BetaColors[i] = Beta & decoder;
             BetaColors[i]>>=j;
@@ -165,49 +172,51 @@
         }
         //send beta colors to the beta slave
         digitalWrite(SS_B, LOW);   
-          transferAndWait ('c');
-          transferAndWait (Beta);  // 
-          transferAndWait (0);
+          transferAndWait ('c'); //request to send beta its colors
+          transferAndWait (Beta); //beta gets colors 
+          transferAndWait (0); //tell beta to move on to managing colors and gripping
         digitalWrite(SS_B, HIGH);  
         
     }
     
-    bool holdCheck(){
+    int holdCheck(){
       byte checkA = 0; byte checkB = 0;
-      bool holding = 0;  
+      int holding = 0;  
         digitalWrite(SSL, LOW);   
-          checkA =transferAndWait ('h');  // 
+          checkA =transferAndWait ('h');  //request gripping condition from Alpha
         digitalWrite(SSL, HIGH);
         
         digitalWrite(SS_B, LOW);   
-          checkB =transferAndWait ('h');  // 
+          checkB =transferAndWait ('h');  //request gripping condition from Beta 
         digitalWrite(SS_B, HIGH);
+        
+        //then see if both Alpha and Beta send the "we have them" message
         holding = ((checkA == B00001111) & (checkB == B00001111)) ? 1 : 0;
         return holding;
     }
     
-    void dropColor(byte x){
+    void dropColor(byte x){ // Transfer a color to the Beta and Alpha //////////////
         digitalWrite(SS_B, LOW);   
-          transferAndWait (x);  
-          transferAndWait (0);
+          transferAndWait (x);  //send color and prep beta
+          transferAndWait (0);  // beta executes drop
         digitalWrite(SS_B, HIGH);
         
         digitalWrite(SSL, LOW);   
-          transferAndWait (x);   
-          transferAndWait (0);
+          transferAndWait (x); //send color and prep alpha  
+          transferAndWait (0);  // alpha executes drop
         digitalWrite(SSL, HIGH);
         
     }
     
-    void dropAll(){
+    void dropAll(){ // Drops all Blocks (should be done before picking up new blocks)
       digitalWrite(SS_B, LOW);   
-        transferAndWait ('a');  
-        transferAndWait (0);
+        transferAndWait ('a');  //prep beta
+        transferAndWait (0);  //execute
       digitalWrite(SS_B, HIGH);
       
       digitalWrite(SSL, LOW);   
-        transferAndWait ('a');   
-        transferAndWait (0);
+        transferAndWait ('a');   //prep alpha
+        transferAndWait (0);    //execute
       digitalWrite(SSL, HIGH);
     }
     
@@ -814,7 +823,8 @@ struct trainCar box[2];
 
   ///////////////////////////////////////////////Gripper/////////////////////////////////////////////////////////////
   void gripperCommand(byte x){
-    if (x=='s'){ 
+    
+    if (x=='s'){ //lower arm while checking for 2 alpha buttons
       int pressed = 0;
       while(pressed != 2){
         pressed = 0;
@@ -824,28 +834,28 @@ struct trainCar box[2];
         delayMicroseconds(50);
       }
     }
-    if (x=='c'){ 
+    if (x=='c'){ // Alpha Senses and sends colors to beta, both manage their colors /////
       Grippers[0].senseColors();
       Grippers[1].senseColors();
-      delay(3000);
+      delay(3000); // It will take a while to read all 6 colors on each Alpha
       Grippers[0].manageColors();
       Grippers[1].manageColors();
     }
-    if (x=='h'){ 
+    if (x=='h'){ // make sure the blocks are firmly gripped before moving away
       int holding = 0;
       while(holding != 2){
         holding = 0;
-        holding += Grippers[0].holdCheck();
-        holding += Grippers[1].holdCheck();
-        delayMicroseconds(1000);
+        holding += Grippers[0].holdCheck(); //add 1 if 2 blocks ready
+        holding += Grippers[1].holdCheck(); //add another 1 if other 2 blocks ready
+        delayMicroseconds(1000); //give the gripper a little time to work
       }
-      
     }
-    if ((x=='r') | (x=='y') | (x=='b') | (x=='g')){ 
+    
+    if ((x=='r') | (x=='y') | (x=='b') | (x=='g')){ //Send drop color command/////
       Grippers[0].dropColor(x);
       Grippers[1].dropColor(x);
     }
-    if (x=='a'){ 
+    if (x=='a'){ // send drop all command
       Grippers[0].dropAll();
       Grippers[1].dropAll();
     }
