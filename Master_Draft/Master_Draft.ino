@@ -129,7 +129,6 @@
         digitalWrite(SSL, LOW);   
           transferAndWait ('c');  // 
           transferAndWait (0);
-          transferAndWait (0);
         digitalWrite(SSL, HIGH);
       
     }
@@ -147,7 +146,7 @@
         //unpack colors
         for (int i=0;i<3;i++){
           for(int j=4;i<3;j-2){
-              AlphaColors[i] = Alpha & decoder;
+              AlphaColors[i] = (int)(Alpha & decoder);
               AlphaColors[i]>>=j;
               decoder >>= 2;
               
@@ -165,8 +164,8 @@
         }
         //send beta colors to the beta slave
         digitalWrite(SS_B, LOW);   
+          transferAndWait ('c');
           transferAndWait (Beta);  // 
-          transferAndWait (0);
           transferAndWait (0);
         digitalWrite(SS_B, HIGH);  
         
@@ -838,7 +837,7 @@ struct trainCar box[2];
   void gripperCommand(byte x){
     if (x=='s'){ 
       int pressed = 0;
-      while(pressed==0){
+      while(pressed==4){
         pressed = 0;
         pressed += Grippers[0].buttonCheck();
         pressed += Grippers[1].buttonCheck();
@@ -848,8 +847,7 @@ struct trainCar box[2];
     if (x=='c'){ 
       Grippers[0].senseColors();
       Grippers[1].senseColors();
-    }
-    if (x=='m'){ 
+      delay(3000);
       Grippers[0].manageColors();
       Grippers[1].manageColors();
     }

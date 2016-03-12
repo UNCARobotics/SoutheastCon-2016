@@ -1,12 +1,7 @@
 #include <Servo.h> // for servo
 #include <Wire.h> // for current sensing
 #include <Adafruit_INA219.h> // for current sensing
-#include "Adafruit_TCS34725.h" // for color sensor
-// initialize the library with the numbers of the interface pins
 
-Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS34725_GAIN_1X);
-
-#define COLOR_ARRAY_SIZE 20
 #define CUR_ARRAY_SIZE 20
 #define POS_ARRAY_SIZE 50
 #define READY_POS 100
@@ -135,14 +130,14 @@ AlphaGripper Finger[3] = {
 };
 
 volatile byte command = 0;   // stores value recieved from master, tells slave what case to run
+volatile byte colors = B11000000;
 volatile int task = 0; //which functions should it be completing 
 volatile int dropColor;
 volatile int go = 0;
 bool button; 
 byte package[2] = {0};
 
-int AllColors[6] = {0}; //colors of alpha grippers 0-2, beta colors 3-5
-int myColors[3] = {0};
+int myColors[3] = {RED, RED, RED};
 
 void setup() {
   Serial.begin(115200);
@@ -180,22 +175,17 @@ ISR (SPI_STC_vect)
     break;
     
   case 'c': //Close and read Color
-    command = c;
+    command = 1;
+    SPDR = 0;
+    colors = c; 
+    break;
+    
+  case 1: //Close and read Color
+    command = 0;
     SPDR = 0;
     task = 3; 
     break;
 
-  case 1: //Send first 3 colors
-    command = c;
-    SPDR = package[0];  
-    break;
-    
-  case 2: //Send 
-    command = c;
-    SPDR = package[1]; 
-    task = 2;
-    break;
-    
   case 'h':
     command = c;
     SPDR = (go == 3) ? B00001111 : 0;
@@ -210,7 +200,6 @@ ISR (SPI_STC_vect)
     //special condition for if top block is blocked... pun intended?
     Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[0] == dropColor)) ? 1 : 0; 
     Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[0].relax == 1)) ? 1 : 0;
-    SPDR = 0;
     break;
     
   case 'y': //DROP YELLOW       
@@ -222,7 +211,6 @@ ISR (SPI_STC_vect)
     //special condition for if top block is blocked... pun intended?
     Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[0] == dropColor)) ? 1 : 0; 
     Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[0].relax == 1)) ? 1 : 0;
-    SPDR = 0;
     break;
     
   case 'b': //DROP BLUE         
@@ -234,7 +222,6 @@ ISR (SPI_STC_vect)
     //special condition for if top block is blocked... pun intended?
     Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[0] == dropColor)) ? 1 : 0; 
     Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[0].relax == 1)) ? 1 : 0;
-    SPDR = 0;
     break;
     
   case 'g': //DROP GREEN        
@@ -246,7 +233,6 @@ ISR (SPI_STC_vect)
     //special condition for if top block is blocked... pun intended?
     Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[0] == dropColor)) ? 1 : 0; 
     Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[0].relax == 1)) ? 1 : 0;
-    SPDR = 0;
     break;
     
  case 'a': //DROP ALL
@@ -302,8 +288,16 @@ ISR (SPI_STC_vect)
       go = (Finger[0].grabbed + Finger[1].grabbed + Finger[2].grabbed);
     }
     if(task == 3){
-      getColors();
-      task == 1;
+        byte decoder = B00110000; // reset decoder
+        
+        for (int i=0;i<3;i++){
+          for(int j=4;i<3;j-2){
+            myColors[i] = (int)(colors & decoder);
+            myColors[i]>>=j;
+            decoder >>= 2;
+          }
+        }    
+      task = 2;
     }
       
   }
@@ -314,74 +308,7 @@ void fill_arrays() {
   }
 }
 
-////////////////////////////////////////////////////////Color///////////////////////////////////////////////////////////////
-void getColors(){
-  
-  readColors(); //Fills all colors array
-  
-  for(int i=0;i<3;i++){  //store colors for this gripper in exclusive array. 
-     myColors[i] = AllColors[i];
-  }
-  
-  package[0] = (AllColors[0]<<4) | (AllColors[1]<<2) | (AllColors[2]) | B11000000; //package beta colors
-  package[1] = (AllColors[3]<<4) | (AllColors[4]<<2) | (AllColors[5]) | B11000000; //package
 
-}
-
-void readColors() {
-      uint16_t r, g, b, c, colorTemp;
-      int R = 0; int B = 0; int Y = 0; int G = 0;
-      uint16_t Color_Hist[COLOR_ARRAY_SIZE];
-      uint16_t color;
-      for(int j=0; j<6; j++){
-        tcaselect(j);
-          for (int i = 0; i < COLOR_ARRAY_SIZE; i++) { //ramp up to good avg
-            tcs.getRawData(&r, &g, &b, &c);
-            colorTemp = tcs.calculateColorTemperature(r, g, b);
-            color = runningAvg(colorTemp, COLOR_ARRAY_SIZE, Color_Hist);
-          }
-    
-          for (int i = 0; i < COLOR_ARRAY_SIZE; i++) { //calculate the mode of 7 blocks
-            tcs.getRawData(&r, &g, &b, &c);
-            colorTemp = tcs.calculateColorTemperature(r, g, b);
-            color = runningAvg(colorTemp, COLOR_ARRAY_SIZE, Color_Hist);
-            if ((color >= 20000)) R++;
-            else if ((color >= 9500) && (color < 20000)) B++;
-            else if ((color >= 3500) && (color < 9500)) G++;
-            else if ((color > 1000) && ( color < 3500 )) Y++;
-          }
-    
-          if (B >= (COLOR_ARRAY_SIZE - 5)) AllColors[j] = BLUE; 
-    
-          else if (G >= (COLOR_ARRAY_SIZE - 5)) AllColors[j] = GREEN;
-    
-          else if (Y >= (COLOR_ARRAY_SIZE - 5)) AllColors[j] =YELLOW;
-    
-          else AllColors[j] = RED;
-        }
-    }
-    
-    float runningAvg(uint16_t Var, int Size, uint16_t *Array) {
-      float Avg_Var;
-      for (int j = Size - 1; j > 0; j--) { //Shifts
-        Array[j] = Array[j - 1];
-      }
-      Array[0] = Var;
-
-      Avg_Var = 0;                                           //Sums/w abs() and finds Average
-      for (int k = 0; k < Size; k++) {
-        Avg_Var += Array[k];
-      }
-      Avg_Var = Avg_Var / Size;
-      return Avg_Var;
-}
-///////////////////////////////////////////////////////////////////////////////////////////////
-void tcaselect(uint8_t i){ //MUX function
-  if(i>7) return;
-  Wire.beginTransmission(0x70);
-  Wire.write(1<<i);
-  Wire.endTransmission();
-}
 
 
 
