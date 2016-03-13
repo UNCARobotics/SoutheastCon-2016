@@ -204,6 +204,30 @@
         transferAndWait (0);    //execute
       digitalWrite(SSL, HIGH);
     }
+
+    void expand(){
+      digitalWrite(SS_B, LOW);   
+        transferAndWait ('E');  //prep beta
+        transferAndWait (0);  //execute
+      digitalWrite(SS_B, HIGH);
+      
+      digitalWrite(SSL, LOW);   
+        transferAndWait ('E');   //prep alpha
+        transferAndWait (0);    //execute
+      digitalWrite(SSL, HIGH);
+    }
+
+    void collapse(){
+      digitalWrite(SS_B, LOW);   
+        transferAndWait ('C');  //prep beta
+        transferAndWait (0);  //execute
+      digitalWrite(SS_B, HIGH);
+      
+      digitalWrite(SSL, LOW);   
+        transferAndWait ('C');   //prep alpha
+        transferAndWait (0);    //execute
+      digitalWrite(SSL, HIGH);
+    }
     
   };
   
