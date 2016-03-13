@@ -1,23 +1,6 @@
 
-/* Corey Pullium/ Feb 2016 / IEEE SoutheastCon
- *  
- * This code is the coneptualization of a navigation function that provides setpoints to a robot
- * and a rotation function that sets up a 90 turn. 
- * The robot uses these setpoints in conjuction with sonar and a PD controller 
- * to navigate directly to the given (X,Z) coordinate.
- * 
- * The 3 noteable sections: 
- * 
- * Class "side" allows for the creation of objects representing each side of the robot, containing it's sensor 
- * retreval method and the PD controllor methods. (this accounts for translation, and correctional rotation)
- * 
- * The Navigation function takes a setpoint for each side of the robot, then asks each side object to 
- * sense and caculate it's own needed adjustments. It then sums adjustments needed from each side and 
- * directs the motors accordingly. 
- * 
- * The Rotate function is past a side to take sonar readings, a direction of rotation and a time. 
- * The time and direction are simple to push the robot in the right direction. Then the function points 
- * the given side to the corner. After that, calling Nav(), again finishes the turn with it's own rotational correction.
+/* Corey Pullium/ March 2016 / IEEE SoutheastCon
+
  */
   // include the library code:
   #include <LiquidCrystal.h> 
@@ -32,6 +15,7 @@
   #define SS_3 40
   #define SS_4 42
   #define SS_5 44
+  #define SS_T 20
 
   #define SS_BG1 15
   #define SS_BG2 16 
@@ -92,9 +76,9 @@
   //    ||-2 1-|| 
   // A  ||-3 0-||   L
   //        B
-  
+// End of Declarations//////////////////////////////////////////////////////////////////////////////////
 
-  ////////////////////////////////////////////END OF INITIALIZATION///////////////////////////////////////////////////
+// GRIPPER CLASS DEFINITION //////////////////////////////////////////////////////////////////////////////////////
   class Gripperset {
    public: 
     int SSL; //Slave select for the Alpha
@@ -108,7 +92,7 @@
          byte a = SPI.transfer (what);
          delayMicroseconds (20);
          return a;
-      } 
+    } 
       
     int buttonCheck(){ // Looking for Button on Alpha, telling Beta///////////////////
       byte checkA = 0; //message recieved from Alpha 
@@ -223,8 +207,8 @@
   };
   
   
-  
-  class Side { /////////////////////////////SIDE CLASS DEFINITION/////////////////////////////////////////////////////
+  // SIDE CLASS DEFINITION///////////////////////////////////////////////////////////////////////////
+  class Side { 
     public:
         //initialized values
         int PingPin1;   //sensor number
@@ -250,26 +234,14 @@
         int SSL;
         //////////////////////////////////////////////////
                             //sense distance for each side
-        void sensePings() {  
-         int P1_lead = 0; int P1_total = 0;
-         int P2_lead = 0; int P2_total = 0;                      
+        void sensePings() {                
          digitalWrite(SSL, LOW);  // open communication (direct slave into interupt routine)
-         transferAndWait ('f');  // asks to turn pings on, and sets up the first byte transfer
-         transferAndWait (2);   //pings are on and first request is recieved  
-         P1_lead = transferAndWait (3); //first package comes in (leading P1 byte)
-         P1_lead <<= 8;                 //shift bits to make room for tailing byte
-         P1_total = transferAndWait (4); //second package comes in (trailing P1 byte)
-         P1_total = P1_lead | P1_total;   //combine lead and tail into 16bit
-         
-         //do the same for P2    IMPORTANT to notice that all messages are recieved 2 transfers after called for
-         P2_lead = transferAndWait (0);   //that is why there are two dummy commands sent with 0 here. 
-         P2_lead <<= 8; 
-         P2_total = transferAndWait (0);
-         P2_total = P2_lead | P2_total; 
+           transferAndWait ('f');  // asks to turn pings on, and sets up the first byte transfer
+           transferAndWait (2);   //pings are on and first request is recieved  
+           //get leading bits, shift them left, get trailing bits, splice them together
+           Ping1 = ((int)transferAndWait(3) << 8) | (int)transferAndWait(4); 
+           Ping2 = ((int)transferAndWait(0) << 8) | (int)transferAndWait(0); 
          digitalWrite(SSL, HIGH); // close communication, but pings will continue to read
-  
-          Ping1 = (float)P1_total;
-          Ping2 = (float)P2_total;
         }
         
         void stopPings(){
@@ -353,7 +325,8 @@
 
   };  
 
-///////////////////////////////////////////INITIALIZATIONS/////////////////////////////////////  
+// INITIALIZATIONS////////////////////////////////////////////////////////////////////////////////////
+  
 //Pixy blocks and globals   
 struct trainCar box[2];
   float Pixy_Error = 0;
@@ -373,21 +346,15 @@ struct trainCar box[2];
     {SS_AG1, SS_BG1, {}, {}, 0, 0},
     {SS_AG2, SS_BG2, {}, {}, 0, 0}
    }; 
+   
   //Sides
          //Pin1,  Pin2,  PT,   DT,   PR,     DR
-  Side Front {0,   1,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_2};
-  Side Back  {2,   3,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_3};
-  Side Arm   {4,   5,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_4};
-  Side Leg   {6,   7,    0,   0,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_5};
-   
-  // Good values
-          //Pin1,  Pin2,  PT,   DT,   PR,     DR
-//  Side Front {0,   1,    1,   4,   1,  0,  0, 0,{},{},0,0, SS_2};
-//  Side Back  {2,   3,    1,   4,   1,  0,  0, 0,{},{},0,0, SS_3};
-//  Side Arm   {4,   5,    1,   4,   0.5,  0,  0, 0,{},{},0,0, SS_4};
-//  Side Leg   {6,   7,    1,   4,   1,  0,  0, 0,{},{},0,0, SS_5};
+  Side Front {0,   1,    1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_2};
+  Side Back  {2,   3,    1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_3};
+  Side Arm   {4,   5,    1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_4};
+  Side Leg   {6,   7,    1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_5};
     
-  ////////////////////////////////////////////////SETUP///////////////////////////////////////////////////////////////
+// SETUP///////////////////////////////////////////////////////////////////////////////////////////
   
   void setup() {
     // for communicating with Processing
@@ -431,7 +398,7 @@ struct trainCar box[2];
   
   
   
-   ////////////////////////////////////////////////////LOOP/////////////////////////////////////////////////////// 
+// LOOP/////////////////////////////////////////////////////////////////////////////////////////// 
   void loop(){ 
     // variables to make calling Rotation function easier to read
     int CCW = 0, CW = 1;
@@ -487,7 +454,7 @@ struct trainCar box[2];
   
   
 
-  ///////////////////////////////////////////////////NAVIGATION/////////////////////////////////////////////////////////
+  // NAVIGATION/////////////////////////////////////////////////////////////////////////////////////////////
   
   void Nav(float F, float B, float A, float L){
     float numParameters = 0;                      //number of non-Zero parameters 
@@ -574,7 +541,7 @@ struct trainCar box[2];
   
 
     
-  /////////////////////////////////////////////////////////ROTATION/////////////////////////////////////////////////////////
+// ROTATION//////////////////////////////////////////////////////////////////////////////////////////
   void Rotate(int side, int Spin, int roTime){
     int RoSpeed = 0;
     float Avg_ErR;
@@ -623,7 +590,7 @@ struct trainCar box[2];
   
   
   
-   //////////////////////////////////////////////////SET;STOP;BUMP;FLIP////////////////////////////////////////////////////////////
+// SET;STOP;BUMP;FLIP////////////////////////////////////////////////////////////////////////////////////
   void setDrive(){
     digitalWrite(EN_M0_M1, HIGH);
     digitalWrite(EN_M2_M3, HIGH);
@@ -701,7 +668,7 @@ struct trainCar box[2];
   }
 
   
-/////////////////////////////////////////////////PIXY NAVIGATION///////////////////////////////////////////////////////
+// PIXY NAVIGATION////////////////////////////////////////////////////////////////////////////////////////////
 
   void PIXY_Nav(float d){        // d == -1 for the first pass (toward the boat), d == 1 for coming back
     int blockNum = 0;
@@ -752,7 +719,7 @@ struct trainCar box[2];
     }
   }
     
-/////////////////////////////////////////////PIXY FUNCTIONS/////////////////////////////////////////////////////////
+// PIXY FUNCTIONS////////////////////////////////////////////////////////////////////////////////////////
   int pixySense(int d){
     
     uint16_t blocks = 0;
@@ -821,7 +788,7 @@ struct trainCar box[2];
       return NewSpeed;
   }
 
-  ///////////////////////////////////////////////Gripper/////////////////////////////////////////////////////////////
+  // Gripper//////////////////////////////////////////////////////////////////////////////////////
   void gripperCommand(byte x){
     
     if (x=='s'){ //lower arm while checking for 2 alpha buttons
@@ -860,6 +827,35 @@ struct trainCar box[2];
       Grippers[1].dropAll();
     }
   }
+  
+  // Truck //////////////////////////////////////////////////////////////////////////////////////////////////////
+        void truckSensePings() {  
+         float Ping_T1 = 0; float Ping_T2 = 0; float Ping_T3 = 0; float Ping_T4 = 0;
+                        
+         digitalWrite(SS_T, LOW);  // open communication (direct slave into interupt routine)
+           transferAndWait ('f');  // asks to turn pings on, and sets up the first byte transfer
+           transferAndWait (2);   //pings are on and first request is recieved  
+           //get leading bits, shift them left, get trailing bits, splice them together
+           Ping_T1 = ((int)transferAndWait(3) << 8) | (int)transferAndWait(4); 
+           Ping_T2 = ((int)transferAndWait(5) << 8) | (int)transferAndWait(6); 
+           Ping_T3 = ((int)transferAndWait(7) << 8) | (int)transferAndWait(8); 
+           Ping_T4 = ((int)transferAndWait(0) << 8) | (int)transferAndWait(0); 
+         digitalWrite(SS_T, HIGH); // close communication, but pings will continue to read
+        }
+        
+        void TruckstopPings(){
+          digitalWrite(SS_T, LOW);   
+          transferAndWait ('q');  // add command 
+          transferAndWait (2);  // add command
+          digitalWrite(SS_T, HIGH);
+          
+        }
+// Transfer and Wait /////////////////////////////////////////////////////////////////////////////////////////////        
+      byte transferAndWait (const byte what){  // function does SPI transfer and delays enough to complete
+         byte a = SPI.transfer (what);
+         delayMicroseconds (20);
+         return a;
+      } 
   ///////////////////////////////////////////////Print Sonar Readings////////////////////////////////////////////////
   void printReadings(float F, float B, float A, float L) {
     //Function for debugging. It prints Front and Arm sonar reading to the LCD. 

@@ -1,28 +1,30 @@
 #include <NewPing.h>
-#define PIN_F1 5
-#define PIN_F2 6
+#define PIN_T1 A5
+#define PIN_T2 A4
+#define PIN_T3 A3
+#define PIN_T4 A2
 #define HIST_ARRAY_SIZE 5 //array of ping readings to average
 
 //initialize 2 pings
-NewPing sonar[2] = {
-  NewPing(PIN_F1, PIN_F1),
-  NewPing(PIN_F2, PIN_F2),
+NewPing sonar[4] = {
+  NewPing(PIN_T1, PIN_T1),
+  NewPing(PIN_T2, PIN_T2),
+  NewPing(PIN_T3, PIN_T3),
+  NewPing(PIN_T4, PIN_T4),
 };
 
 volatile byte command = 0;   // stores value recieved from master, tells slave what case to run
-byte package[2][2] = {0}; //storage for partitioned int (two bytes)
-float Ping[2] = {0}; // F1, F2
-unsigned int Dist[2] = {0}; //change ping readings to int's
+byte package[4][2] = {0}; //storage for partitioned int (two bytes)
+float Ping[4] = {0}; // T1, T2
+unsigned int Dist[4] = {0}; //change ping readings to int's
 volatile int on = 0; //turns sensor on and off
-float Avg_Ping[2];
-float Pings_History[2][HIST_ARRAY_SIZE];
+float Avg_Ping[4];
+float Pings_History[4][HIST_ARRAY_SIZE];
 
 
 void setup (void)
 {
   Serial.begin(115200);
-  analogWrite(3, LOW); // LED's off
-  digitalWrite(3, LOW);
   // have to send on master in, *slave out*
   pinMode(MISO, OUTPUT);
 
@@ -68,10 +70,30 @@ ISR (SPI_STC_vect)
     command = c;
     SPDR = package[1][1];  // trailing byte of ping 2
     break;
+    
+  case 5:  
+    command = c;
+    SPDR = package[2][0];  // leading byte of ping 3
+    break;
+    
+  case 6:
+    command = c;
+    SPDR = package[2][1];  // trailing byte of ping 3
+    break;
+
+  case 7:
+    command = c;
+    SPDR = package[3][0];  // leading byte of ping 4
+    break;
+    
+  case 8:
+    command = c;
+    SPDR = package[3][1];  // trailing byte of ping 4
+    break;   
  
   case 'q':             //reciving 'q' primes the slave to turn off sensors
     command = c;
-    SPDR = 0;  // trailing byte of ping 2 on last transmition
+    SPDR = 0;
     on = 0;               //turn off sensors
     break;
     
@@ -82,13 +104,10 @@ ISR (SPI_STC_vect)
 
 void loop (void){
 if (on == 1){       //only if told, turn sensors on
-  
-  sensePings();
+  sensePings(); 
 }
   // if SPI not active, clear current command
 if (digitalRead (SS) == HIGH)
-    analogWrite(3, LOW);
-    digitalWrite(3, LOW);
     command = 0;
 }  
 
@@ -96,18 +115,15 @@ if (digitalRead (SS) == HIGH)
 
 //////////////////////////////sense, display/////////////////////////////////////////////////
 void sensePings() { 
-     //reset Avgs
-    Avg_Ping[0] = 0; 
-    Avg_Ping[1] = 0;
-    
-    //take measurement 
-    Ping[0] = (sonar[0].ping()/29/2)*10;  
-    ping_1_check();
-    Ping[1] = (sonar[1].ping()/29/2)*10;
-    ping_2_check();
-    
+     
+    for(int i=0; i<4;i++){
+       Avg_Ping[i] = 0;  //reset Avgs
+       Ping[i] = (sonar[i].ping()/29/2)*10;  //take measurments
+    }
+   
+
     //shift new measurement into a history of measurments
-    for(int i=0;i<2;i++){
+    for(int i=0;i<4;i++){
       for(int j=HIST_ARRAY_SIZE-1; j>0; j--){   //Shifts        
           Pings_History[i][j] = Pings_History[i][j-1];
       }
@@ -124,14 +140,8 @@ void sensePings() {
       package[i][1] = Dist[i] & 0xFF; //chop into trailing byte
     }  
 }
-void ping_1_check(){
-  if (Ping[0] > 0){
-   analogWrite(3, HIGH); //LED ON
-  }
-}
-void ping_2_check(){
-  if (Ping[1] > 0){
-   digitalWrite(3, HIGH); //LED ON
-  }
-}
+
+
+
+
 
