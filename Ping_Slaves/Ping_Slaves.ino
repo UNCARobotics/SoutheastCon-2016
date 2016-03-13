@@ -49,7 +49,7 @@ ISR (SPI_STC_vect)
     on = 1;     //getting a trasfer? turn on sensors
     break;
     
-  case 'f':
+  case 'p':
     command = c;
     SPDR = package[0][0];  // leading byte of ping 1
     break;
@@ -81,15 +81,16 @@ ISR (SPI_STC_vect)
 
 
 void loop (void){
-if (on == 1){       //only if told, turn sensors on
-  
-  sensePings();
-}
-  // if SPI not active, clear current command
-if (digitalRead (SS) == HIGH)
-    analogWrite(3, LOW);
-    digitalWrite(3, LOW);
-    command = 0;
+  if (on == 1){       //only if told, turn sensors on
+    
+    sensePings();
+  }
+    // if SPI not active, clear current command
+  if (digitalRead (SS) == HIGH){
+      analogWrite(3, LOW);
+      digitalWrite(3, LOW);
+      command = 0;
+  }
 }  
 
 

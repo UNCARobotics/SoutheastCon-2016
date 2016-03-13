@@ -10,9 +10,14 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS347
 #define COLOR_ARRAY_SIZE 20  //array for averaging color
 #define CUR_ARRAY_SIZE 20    //array for averaging current
 #define POS_ARRAY_SIZE 50   //array for averaging Servo Position
+#define ER_ARRAY_SIZE 30  //array for averaging error
+
 #define READY_POS 100 //open and ready for picking up
 #define COLOR_READ_POS 40 //mostly closed to read the color sensor
-#define ER_ARRAY_SIZE 30  //array for averaging error
+
+
+#define EXPAND_SET 60 //servo position for expanding the gripper outer sliders
+#define COLLAPSE_SET 120 //servo position for collapsing the gripper outer sliders
 
 enum { //place holder for colors RED = int 0, Yellow = int 1, etc...makes reading code easier
   RED,
@@ -141,6 +146,10 @@ volatile byte command = 0;   // stores value recieved from master, tells slave w
 volatile int task = 0; //which functions should it be completing 
 volatile int dropColor;
 volatile int go = 0;
+
+volatile int expand = 0;
+volatile int collapse = 0;
+
 bool button = HIGH; 
 byte package[2] = {0};
 
@@ -150,6 +159,9 @@ int myColors[3] = {RED, RED, RED}; // personal colors gripper looks at to drop b
 
 int lastButtonReading = HIGH;
 long lastDebounceTime = 0;  
+
+Servo assemblyServo;
+
   
 
 void setup() {
@@ -158,6 +170,8 @@ void setup() {
   for(int i=0; i<3; i++){
     Finger[i].initSensors();
   }
+  
+  assemblyServo.attach(10);
   pinMode(A1, INPUT); //button
   pinMode(MISO, OUTPUT);
 
@@ -213,18 +227,33 @@ ISR (SPI_STC_vect)
   case 'h':
     command = c;
     SPDR = (go == 3) ? B00001111 : 0; //if all three are flagged, send 'ready'
+    break; 
+
+// Tells the gripper assembly to expand //////////////////////////   
+  case 'E':
+    command = c;
+    SPDR = 0;
+    expand = 1;
+    break;  
+    
+// Tells the gripper assembly to collapse//////////////////////////  
+  case 'C':
+    command = c;
+    SPDR = 0;
+    collapse = 1;
     break;  
     
 // DROP RED /////////////////////////////////
   case 'r':      
     command = c;
     dropColor = RED;
-    Finger[0].relax = (myColors[0] == dropColor) ? 1 : 0; //put guts in interrupt without function call
     Finger[1].relax = (myColors[1] == dropColor) ? 1 : 0;
     
     //special condition for if top block is blocked... pun intended?
-    Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[0] == dropColor)) ? 1 : 0; 
-    Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[0].relax == 1)) ? 1 : 0;
+    Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[1] == dropColor)) ? 1 : 0; 
+    Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[1].relax == 1)) ? 1 : 0;
+    Finger[0].relax = ((myColors[0] == dropColor)&&(myColors[1] == dropColor)) ? 1 : 0; 
+    Finger[0].relax = ((myColors[0] == dropColor)&&(Finger[1].relax == 1)) ? 1 : 0;
     SPDR = 0;
     break;
     
@@ -232,12 +261,13 @@ ISR (SPI_STC_vect)
   case 'y':      
     command = c;
     dropColor = YELLOW;
-    Finger[0].relax = (myColors[0] == dropColor) ? 1 : 0; //put guts in interrupt without function call
     Finger[1].relax = (myColors[1] == dropColor) ? 1 : 0;
     
     //special condition for if top block is blocked... pun intended?
-    Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[0] == dropColor)) ? 1 : 0; 
-    Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[0].relax == 1)) ? 1 : 0;
+    Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[1] == dropColor)) ? 1 : 0; 
+    Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[1].relax == 1)) ? 1 : 0;
+    Finger[0].relax = ((myColors[0] == dropColor)&&(myColors[1] == dropColor)) ? 1 : 0; 
+    Finger[0].relax = ((myColors[0] == dropColor)&&(Finger[1].relax == 1)) ? 1 : 0;
     SPDR = 0;
     break;
 
@@ -245,12 +275,13 @@ ISR (SPI_STC_vect)
   case 'b':         
     command = c;
     dropColor = BLUE;
-    Finger[0].relax = (myColors[0] == dropColor) ? 1 : 0; //put guts in interrupt without function call
     Finger[1].relax = (myColors[1] == dropColor) ? 1 : 0;
     
     //special condition for if top block is blocked... pun intended?
-    Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[0] == dropColor)) ? 1 : 0; 
-    Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[0].relax == 1)) ? 1 : 0;
+    Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[1] == dropColor)) ? 1 : 0; 
+    Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[1].relax == 1)) ? 1 : 0;
+    Finger[0].relax = ((myColors[0] == dropColor)&&(myColors[1] == dropColor)) ? 1 : 0; 
+    Finger[0].relax = ((myColors[0] == dropColor)&&(Finger[1].relax == 1)) ? 1 : 0;
     SPDR = 0;
     break;
 
@@ -258,12 +289,13 @@ ISR (SPI_STC_vect)
   case 'g':         
     command = c;
     dropColor = GREEN;
-    Finger[0].relax = (myColors[0] == dropColor) ? 1 : 0; //put guts in interrupt without function call
     Finger[1].relax = (myColors[1] == dropColor) ? 1 : 0;
     
     //special condition for if top block is blocked... pun intended?
-    Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[0] == dropColor)) ? 1 : 0; 
-    Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[0].relax == 1)) ? 1 : 0;
+    Finger[2].relax = ((myColors[2] == dropColor)&&(myColors[1] == dropColor)) ? 1 : 0; 
+    Finger[2].relax = ((myColors[2] == dropColor)&&(Finger[1].relax == 1)) ? 1 : 0;
+    Finger[0].relax = ((myColors[0] == dropColor)&&(myColors[1] == dropColor)) ? 1 : 0; 
+    Finger[0].relax = ((myColors[0] == dropColor)&&(Finger[1].relax == 1)) ? 1 : 0;
     SPDR = 0;
     break;
     
@@ -296,9 +328,10 @@ ISR (SPI_STC_vect)
           int reading = digitalRead(A1); //take a button reading
           // Debounce code
           if (reading != lastButtonReading) lastDebounceTime = millis();
-          if ((millis() - lastDebounceTime) > 25){
-           if (button != reading) 
-             button = reading;
+          if ((millis() - lastDebounceTime) > 50){
+             if (button != reading){ 
+                button = reading;
+             }
           }   
           lastButtonReading = reading;
           // End Debounce 
@@ -312,6 +345,7 @@ ISR (SPI_STC_vect)
       Finger[i].grabbed = 0;
       }
       fill_arrays();
+      expand_collapse_Check();
     }
   
     
@@ -333,6 +367,7 @@ ISR (SPI_STC_vect)
       button = LOW; // reset button
       }
       go = (Finger[0].grabbed + Finger[1].grabbed + Finger[2].grabbed); // how many blocks grabbed?
+      expand_collapse_Check();
     }
     
     if(task == 3){ // Take Color Readings on ALPHA & BETA, and Package results
@@ -421,6 +456,24 @@ void tcaselect(uint8_t i){ //MUX function
   Wire.beginTransmission(0x70);
   Wire.write(1<<i);
   Wire.endTransmission();
+}
+// expanding and collapsing set ////////////////////////////////////////////
+void expand_collapse_Check(){
+       if (expand == 1){
+         for(int pos=90;pos>EXPAND_SET;pos++){
+            assemblyServo.write(pos);
+            delay(1);
+         }   
+       }
+       expand = 0;
+       if (collapse == 1){
+         for(int pos=90;pos<COLLAPSE_SET;pos++){
+            assemblyServo.write(pos);
+            delay(1);
+       } 
+       collapse = 0;
+      }
+  
 }
 
 

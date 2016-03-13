@@ -16,6 +16,7 @@
   #define SS_4 42
   #define SS_5 44
   #define SS_T 20
+  #define SS_IR 21
 
   #define SS_BG1 15
   #define SS_BG2 16 
@@ -236,7 +237,7 @@
                             //sense distance for each side
         void sensePings() {                
          digitalWrite(SSL, LOW);  // open communication (direct slave into interupt routine)
-           transferAndWait ('f');  // asks to turn pings on, and sets up the first byte transfer
+           transferAndWait ('p');  // asks to turn pings on, and sets up the first byte transfer
            transferAndWait (2);   //pings are on and first request is recieved  
            //get leading bits, shift them left, get trailing bits, splice them together
            Ping1 = ((int)transferAndWait(3) << 8) | (int)transferAndWait(4); 
@@ -833,7 +834,7 @@ struct trainCar box[2];
          float Ping_T1 = 0; float Ping_T2 = 0; float Ping_T3 = 0; float Ping_T4 = 0;
                         
          digitalWrite(SS_T, LOW);  // open communication (direct slave into interupt routine)
-           transferAndWait ('f');  // asks to turn pings on, and sets up the first byte transfer
+           transferAndWait ('t');  // asks to turn pings on, and sets up the first byte transfer
            transferAndWait (2);   //pings are on and first request is recieved  
            //get leading bits, shift them left, get trailing bits, splice them together
            Ping_T1 = ((int)transferAndWait(3) << 8) | (int)transferAndWait(4); 
@@ -850,6 +851,24 @@ struct trainCar box[2];
           digitalWrite(SS_T, HIGH);
           
         }
+        void senseIRs() {  
+          int IR_package1 = 0; int IR_package2 = 0;              
+         digitalWrite(SS_IR, LOW);  // open communication (direct slave into interupt routine)
+           transferAndWait ('i');  // asks to turn pings on, and sets up the first byte transfer
+           transferAndWait (2);   //pings are on and first request is recieved  
+           //get leading bits, shift them left, get trailing bits, splice them together
+           IR_package1 = ((int)transferAndWait(3) << 8) | (int)transferAndWait(4); 
+           IR_package2 = ((int)transferAndWait(0) << 8) | (int)transferAndWait(0); 
+         digitalWrite(SS_IR, HIGH); // close communication, but pings will continue to read
+        }
+        
+        void stopIRs(){
+          digitalWrite(SS_IR, LOW);   
+          transferAndWait ('q');  // add command 
+          transferAndWait (2);  // add command
+          digitalWrite(SS_IR, HIGH);
+        }
+       
 // Transfer and Wait /////////////////////////////////////////////////////////////////////////////////////////////        
       byte transferAndWait (const byte what){  // function does SPI transfer and delays enough to complete
          byte a = SPI.transfer (what);
