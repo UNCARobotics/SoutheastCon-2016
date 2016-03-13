@@ -141,12 +141,16 @@ volatile byte command = 0;   // stores value recieved from master, tells slave w
 volatile int task = 0; //which functions should it be completing 
 volatile int dropColor;
 volatile int go = 0;
-bool button; 
+bool button = HIGH; 
 byte package[2] = {0};
 
 int AllColors[6] = {0}; //colors of alpha grippers 0-2, beta colors 3-5
 int myColors[3] = {RED, RED, RED}; // personal colors gripper looks at to drop blocks
 // init BLUE for competition (best odds)
+
+int lastButtonReading = HIGH;
+long lastDebounceTime = 0;  
+  
 
 void setup() {
   Serial.begin(115200);
@@ -156,6 +160,7 @@ void setup() {
   }
   pinMode(A1, INPUT); //button
   pinMode(MISO, OUTPUT);
+
 
   // turn on SPI in slave mode
   SPCR |= _BV(SPE);
@@ -286,9 +291,19 @@ ISR (SPI_STC_vect)
     
 
     if (task == 0){  // Defalt when Grippers are not being used ////////////////////////
-      if (button == LOW){
-        button == digitalRead(A1);
+      if (button == HIGH){
+        
+          int reading = digitalRead(A1); //take a button reading
+          // Debounce code
+          if (reading != lastButtonReading) lastDebounceTime = millis();
+          if ((millis() - lastDebounceTime) > 25){
+           if (button != reading) 
+             button = reading;
+          }   
+          lastButtonReading = reading;
+          // End Debounce 
       }
+      
       //everything is reset     
       for(int i=0;i<3;i++){ 
       Finger[i].relax = 0;
