@@ -245,9 +245,6 @@
   // SIDE CLASS DEFINITION///////////////////////////////////////////////////////////////////////////
   class Side { 
     public:
-        //initialized values
-        int PingPin1;   //sensor number
-        int PingPin2;
         
         float P_T;      // PD constants
         float D_T;
@@ -279,6 +276,25 @@
          digitalWrite(SSL, HIGH); // close communication, but pings will continue to read
         }
         
+        void senseTruckPins(byte x) {                 
+         digitalWrite(SSL, LOW);  // open communication (direct slave into interupt routine)
+         if (x = 'r'){
+           transferAndWait ('r');  // asks to turn pings on, and sets up the first byte transfer
+           transferAndWait (2);   //pings are on and first request is recieved  
+           //get leading bits, shift them left, get trailing bits, splice them together
+           Ping1 = ((int)transferAndWait(3) << 8) | (int)transferAndWait(4);  
+           Ping2 = ((int)transferAndWait(0) << 8) | (int)transferAndWait(0); 
+         }
+         if (x = 'l'){
+           transferAndWait ('l');  // asks to turn pings on, and sets up the first byte transfer
+           transferAndWait (6);   //pings are on and first request is recieved  
+           //get leading bits, shift them left, get trailing bits, splice them together
+           Ping1 = ((int)transferAndWait(7) << 8) | (int)transferAndWait(8);  
+           Ping2 = ((int)transferAndWait(0) << 8) | (int)transferAndWait(0); 
+         }
+         digitalWrite(SSL, HIGH); // close communication, but pings will continue to read
+        }
+        
         void stopPings(){
           digitalWrite(SSL, LOW);   
           transferAndWait ('q');  // add command 
@@ -298,6 +314,20 @@
           
           Prev_Error = Error_T;
           Error_T = (Ping1 + Ping2)/2 - setpoint; 
+          Avg_Error(Error_T, T);
+          Correction = P_T*(Error_T) + D_T*(Error_T - Prev_Error);
+          NewSpeed = BaseSpeed + Correction;
+         
+          return NewSpeed;
+        }
+
+        float lineUp_PD(){
+          float setpoint = 305;
+          float Prev_Error, Correction, NewSpeed;
+          int T = 1; // condition for averaging translation in Avg_error function
+          
+          Prev_Error = Error_T;
+          Error_T = (Ping2 - Ping1) - setpoint; 
           Avg_Error(Error_T, T);
           Correction = P_T*(Error_T) + D_T*(Error_T - Prev_Error);
           NewSpeed = BaseSpeed + Correction;
@@ -383,11 +413,13 @@ struct trainCar box[2];
    }; 
    
   //Sides
-         //Pin1,  Pin2,  PT,   DT,   PR,     DR
-  Side Front {0,   1,    1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_2};
-  Side Back  {2,   3,    1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_3};
-  Side Arm   {4,   5,    1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_4};
-  Side Leg   {6,   7,    1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_5};
+            // PT,   DT,   PR,   DR
+  Side Front   {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_2};
+  Side Back    {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_3};
+  Side Arm     {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_4};
+  Side Leg     {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_5};
+  Side Truck_R {0,   0,   0,     0,  0, 0, 0, 0, {},{},0,0, SS_T};
+  Side Truck_L {0,   0,   0,     0,  0, 0, 0, 0, {},{},0,0, SS_T};
 
   Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(8, 8, LED_PIN,
   NEO_MATRIX_LEFT     + NEO_MATRIX_TOP +
@@ -527,8 +559,8 @@ struct trainCar box[2];
         Leg.sensePings();
         Ns_Tal = -Leg.PD_T(L);
         Ns_R += -Leg.PD_R();
-        Avg_ErT_al = Back.getAvg_ErT();
-        Avg_ErR += Back.getAvg_ErR();
+        Avg_ErT_al = Leg.getAvg_ErT();
+        Avg_ErR += Leg.getAvg_ErR();
       }
 
       if(Avg_ErT_fb < 2 && Avg_ErT_al < 2 && Avg_ErR/numParameters < 2){
@@ -633,6 +665,10 @@ struct trainCar box[2];
   void stopDrive(){
     digitalWrite(EN_M0_M1, LOW);
     digitalWrite(EN_M2_M3, LOW);
+    Front.stopPings();
+    Back.stopPings();
+    Arm.stopPings();
+    Leg.stopPings();
       
   }
   
@@ -817,6 +853,79 @@ struct trainCar box[2];
       NewSpeed = BaseSpeed + Correction;
       return NewSpeed;
   }
+  
+ // TRUCK ////////////////////////////////////////////////////////////////////
+void  Truck_Nav_LineUp(bool mirror, float L){
+  bool TooFar_flag = 0;
+    float Ns_Tal = 0; float Avg_ErT_al = 100;    //new speed; Avg Error; for front/back translation
+    float Ns_Trk = 0; float Avg_ErTrk = 100;    //new speed; Avg Error; for arm/leg translation
+    float Ns_R = 0;   float Avg_ErR = 100;       //new speed; Avg Error; for all translation
+
+  fill_error_arrays();
+
+  while (1){
+    Ns_R = 0;
+    Avg_ErR = 0;
+    led_Truckline(1);
+  
+   if(mirror){
+    Back.sensePings();
+    Ns_R = -Back.PD_R();
+    Avg_ErR = Back.getAvg_ErR();
+    
+    Truck_R.sensePings();
+    Ns_Trk = Truck_R.lineUp_PD();
+    Avg_ErTrk = Truck_R.getAvg_ErT();
+
+    if (TooFar_flag == 0){
+        if (Back.Ping1 < 230){Ns_Trk *= -1; TooFar_flag = 1;}
+      }
+      if (TooFar_flag == 1){
+        if (Back.Ping1 > 525){Ns_Trk *= -1; TooFar_flag = 0;}
+      }
+   }
+   
+   else{
+    Front.sensePings();
+    Ns_R = Front.PD_R();
+    Avg_ErR = Front.getAvg_ErR();
+    
+    Truck_L.sensePings();
+    Ns_Trk = Truck_L.lineUp_PD();
+    Avg_ErTrk = Truck_L.getAvg_ErT();
+
+      if (TooFar_flag == 0){
+        if (Front.Ping1 < 230){Ns_Trk *= -1; TooFar_flag = 1;}
+      }
+      if (TooFar_flag == 1){
+        if (Front.Ping1 > 525){Ns_Trk *= -1; TooFar_flag = 0;}
+      }
+   }
+   
+  Leg.sensePings();
+  Ns_Tal = -Leg.PD_T(L);
+  Ns_R += -Leg.PD_R();
+  Avg_ErT_al = Leg.getAvg_ErT();
+  Avg_ErR += Leg.getAvg_ErR();
+
+  if(Avg_ErTrk < 2 && Avg_ErT_al < 2 && Avg_ErR/2 < 2){
+      printReadings(0,1,0,1);
+      stopDrive();
+      led_Truckline(0);
+      return;
+    }
+  // Sum all speed caculations in proper orintation for mecanum drive
+    Motor[0].Speed = Ns_Trk + Ns_Tal - (Ns_R/2);
+    Motor[1].Speed = Ns_Trk - Ns_Tal - (Ns_R/2);
+    Motor[2].Speed = Ns_Trk - Ns_Tal + (Ns_R/2);
+    Motor[3].Speed = Ns_Trk + Ns_Tal + (Ns_R/2);
+  
+    flipMotors();
+    printReadings(0,1,0,1); //print the Sonar readings to the LCD screen
+    setDrive(); //everything so far stored motor change data, now tell the motors to use that data
+  }  
+}
+
 
   // Gripper//////////////////////////////////////////////////////////////////////////////////////
   void gripperCommand(byte x){
@@ -1059,5 +1168,26 @@ uint32_t led_Rotate(bool dir, uint32_t lastlight){
   }
   matrix.show();
   return lastlight;
+}
+void led_Truckline(bool n){
+  int x[12] = {0,1,0,7,6,7,0,1,0,7,6,7};
+  int y[12] = {0,0,1,0,0,1,7,7,6,7,7,6};
+  for(int i = 0; i<12; i++){
+    if (n == 1) { 
+    matrix.drawPixel(x[i], y[i], matrix.Color(0, 0 , 255));
+    matrix.show();
+    }
+    else{ 
+      for(int i=0; i<4; i++){
+      matrix.drawPixel(x[i], y[i], matrix.Color(0, 0 , 255));
+      matrix.show();
+      delay(250);
+      matrix.drawPixel(x[i], y[i], matrix.Color(0, 0 , 0));
+      matrix.show();
+      delay(250);
+      }
+    }
+  }
+  
 }
 

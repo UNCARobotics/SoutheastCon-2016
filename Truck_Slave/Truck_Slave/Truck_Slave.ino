@@ -51,7 +51,7 @@ ISR (SPI_STC_vect)
     on = 1;     //getting a trasfer? turn on sensors
     break;
     
-  case 't':
+  case 'r':
     command = c;
     SPDR = package[0][0];  // leading byte of ping 1
     break;
@@ -71,7 +71,7 @@ ISR (SPI_STC_vect)
     SPDR = package[1][1];  // trailing byte of ping 2
     break;
     
-  case 5:  
+  case 'l':  
     command = c;
     SPDR = package[2][0];  // leading byte of ping 3
     break;
