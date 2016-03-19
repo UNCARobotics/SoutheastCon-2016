@@ -460,14 +460,14 @@ void tcaselect(uint8_t i){ //MUX function
 // expanding and collapsing set ////////////////////////////////////////////
 void expand_collapse_Check(){
        if (expand == 1){
-         for(int pos=90;pos>EXPAND_SET;pos++){
+         for(int pos=COLLAPSE_SET;pos>=EXPAND_SET;pos--){
             assemblyServo.write(pos);
             delay(1);
          }   
        }
        expand = 0;
        if (collapse == 1){
-         for(int pos=90;pos<COLLAPSE_SET;pos++){
+         for(int pos=EXPAND_SET;pos<=COLLAPSE_SET;pos++){
             assemblyServo.write(pos);
             delay(1);
        } 

@@ -7,7 +7,11 @@
   #include <NewPing.h>
   #include <SPI.h>  
   #include <Pixy.h>
- 
+  #include <Adafruit_GFX.h>
+  #include <Adafruit_NeoMatrix.h>
+  #include <Adafruit_NeoPixel.h>
+
+  #define LED_PIN 6
   #define ER_ARRAY_SIZE 30
   
   //Side Pings
@@ -18,9 +22,9 @@
   #define SS_T 20
   #define SS_IR 21
 
-  #define SS_BG1 15
+  #define SS_BG1 6
   #define SS_BG2 16 
-  #define SS_AG1 17 
+  #define SS_AG1 7 
   #define SS_AG2 18 
     
   #define M0_IN1 48
@@ -48,6 +52,7 @@
   #define MAXIMUM 15
   bool flagger;
 
+  int c = 0; //counter for led panel  
   
   // initialize the library with the numbers of the interface pins
   LiquidCrystal lcd(39, 41, 43, 45, 47, 37);
@@ -113,6 +118,7 @@
         
         //check if the message meets condition 
         touchdown = (checkA == B11110000) ? 1 : 0;
+        touchdown = 1;
         return touchdown; 
      }
     
@@ -378,12 +384,22 @@ struct trainCar box[2];
   Side Back  {2,   3,    1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_3};
   Side Arm   {4,   5,    1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_4};
   Side Leg   {6,   7,    1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_5};
+
+  Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(8, 8, LED_PIN,
+  NEO_MATRIX_LEFT     + NEO_MATRIX_TOP +
+  NEO_MATRIX_ROWS + NEO_MATRIX_PROGRESSIVE,
+  NEO_GRB            + NEO_KHZ800);
+  
     
 // SETUP///////////////////////////////////////////////////////////////////////////////////////////
   
   void setup() {
     // for communicating with Processing
     Serial.begin(115200);
+
+    matrix.begin();
+    matrix.show();
+    matrix.setBrightness(20);
     
     lcd.begin(16, 2); // set up the LCD's number of columns and rows
     lcd.print("IEEE TESTING");   // Print a message to the LCD.
@@ -429,52 +445,29 @@ struct trainCar box[2];
     int CCW = 0, CW = 1;
     int F = 0, A = 1, B = 2, L = 3;
     
-  lcd.clear();
-  lcd.print("Ready...3");
-  delay(1000);
-  lcd.clear();
-  lcd.print("Ready...2");
-  delay(1000);
-  lcd.clear();
-  lcd.print("Ready...1");
-  delay(1000);
-
-
-  Nav(1760, 0, 50, 0);
-  lcd.clear();
-  lcd.print("here");
-  delay(5000);
- 
-//  Nav(150,0,0, 150); //Navigate out of tunnel using Front and Leg
-//  lcd.clear();
-//  lcd.print("here");
-//  delay(5000);
-//
-//  Rotate(A, CW,1000); //Rotate Arm to Bardge C
-//  lcd.clear();
-//  lcd.print("Rotated");
-//  delay(5000);
-//  
-//  Nav(300,150,0,0); //Center with Front and Arm
-//  lcd.clear();
-//  lcd.print("Im Here");
-//  delay(5000);
-//  
-//  lcd.clear();
-//  lcd.print("Turning off");
-//  delay(1500);
+  printCountdown();
   
- 
-//  
-//  Rotate(L, CCW, 500); //Rotate to boat unload orientation 
-//  Nav(30,0,0,30);
-//  delay(5000);
-//  
-//  Nav(30,0,0,100); //Navigate to Middle B using Front and Leg
-//  lcd.clear();
-//  lcd.print("Done");
-//  delay(10000);
   
+  Serial.println("Searching");
+  gripperCommand('s');
+  Serial.println("Touchdown");
+  gripperCommand('c');
+  printColors_Grippers(0);
+  gripperCommand('h');
+  Serial.print("H");
+  delay(8000);
+  gripperCommand('y');
+  delay(2000);
+  gripperCommand('g');
+  delay(2000);
+  gripperCommand('b');
+  delay(2000);
+  gripperCommand('r');
+  delay(2000);
+  gripperCommand('y');
+  delay(2000);
+  gripperCommand('a');
+
   }
   
   
@@ -493,6 +486,7 @@ struct trainCar box[2];
     while (1){ 
         //  timer = millis();
       //Process_PD();
+      led_Nav(1); //turn on LED PANEL
       
       Ns_R = 0;
       Avg_ErR = 0;
@@ -536,6 +530,7 @@ struct trainCar box[2];
       if(Avg_ErT_fb < 2 && Avg_ErT_al < 2 && Avg_ErR/numParameters < 2){
         printReadings(F,B,A,L);
         stopDrive();
+        led_Nav(0);
         return;
       }
     // Sum all speed caculations in proper orintation for mecanum drive
@@ -570,13 +565,18 @@ struct trainCar box[2];
   void Rotate(int side, int Spin, int roTime){
     int RoSpeed = 0;
     float Avg_ErR;
+    c = 0; //counter for led panel  
+    uint32_t lastlight = 0; //tracking time for led panel
     Serial.println("rotate");
+
+    lastlight = led_Rotate(Spin, lastlight); //LED PANEL
     Bump(Spin, roTime); // give the robot a kick in the right direction
 
     fill_error_arrays(); // resets error arrays
     
     while(1){
-      
+    lastlight = led_Rotate(Spin, lastlight); //LED PANEL  
+    
       //cases for each side
       if (side == 0){       
         Front.sensePings();
@@ -600,6 +600,7 @@ struct trainCar box[2];
       }
       if (Avg_ErR < 2){
         stopDrive();
+        led_Nav(0);
         return;
       }
       //store motor speeds according to the functions above
@@ -818,38 +819,39 @@ struct trainCar box[2];
     
     if (x=='s'){ //lower arm while checking for 2 alpha buttons
       int pressed = 0;
-      while(pressed != 2){
+      while(pressed != 1){
         pressed = 0;
+        
         //armMovesDown();
         pressed += Grippers[0].buttonCheck();
-        pressed += Grippers[1].buttonCheck();
+       // pressed += Grippers[1].buttonCheck();
         delayMicroseconds(50);
       }
     }
     if (x=='c'){ // Alpha Senses and sends colors to beta, both manage their colors /////
       Grippers[0].senseColors();
-      Grippers[1].senseColors();
+      //Grippers[1].senseColors();
       delay(3000); // It will take a while to read all 6 colors on each Alpha
       Grippers[0].manageColors();
-      Grippers[1].manageColors();
+      //Grippers[1].manageColors();
     }
     if (x=='h'){ // make sure the blocks are firmly gripped before moving away
       int holding = 0;
-      while(holding != 2){
+      while(holding != 1){
         holding = 0;
         holding += Grippers[0].holdCheck(); //add 1 if 2 blocks ready
-        holding += Grippers[1].holdCheck(); //add another 1 if other 2 blocks ready
+        //holding += Grippers[1].holdCheck(); //add another 1 if other 2 blocks ready
         delayMicroseconds(1000); //give the gripper a little time to work
       }
     }
     
     if ((x=='r') | (x=='y') | (x=='b') | (x=='g')){ //Send drop color command/////
       Grippers[0].dropColor(x);
-      Grippers[1].dropColor(x);
+      //Grippers[1].dropColor(x);
     }
-    if (x=='a'){ // send drop all command
+    if (x=='a'){ // send drop all command  (must do this before picking up more blocks
       Grippers[0].dropAll();
-      Grippers[1].dropAll();
+      //Grippers[1].dropAll();
     }
   }
   
@@ -899,7 +901,19 @@ struct trainCar box[2];
          delayMicroseconds (20);
          return a;
       } 
-  ///////////////////////////////////////////////Print Sonar Readings////////////////////////////////////////////////
+  // PRINTS ///////////////////////////////////////////////////////////////
+ void printCountdown(){
+    lcd.clear();
+    lcd.print("Ready...3");
+    delay(1000);
+    lcd.clear();
+    lcd.print("Ready...2");
+    delay(1000);
+    lcd.clear();
+    lcd.print("Ready...1");
+    delay(1000);
+ }
+  
   void printReadings(float F, float B, float A, float L) {
     //Function for debugging. It prints Front and Arm sonar reading to the LCD. 
     if (F){
@@ -943,106 +957,103 @@ struct trainCar box[2];
     }
   }
 
-
+  void printColors_Grippers(int set){
+    
+    Serial.print("A0: ");   
+    Serial.println(Grippers[set].AlphaColors[0]);
+        
   
- void Process_PD(){
-    // for temporarily holding values of constants that have been recieved from processing
-  byte pt; byte dt; byte pr; byte dr;
-  int PT_total = 0; int DT_total = 0; int PR_total = 0; int DR_total = 0;
-  int side;
-  bool dataReady = LOW;
-  int index = 0;
-  int bufferArray[10];
-  float Mag;
-  float scale = 0;
+    Serial.print("1: ");   
+    Serial.println(Grippers[set].AlphaColors[1]); 
   
-  if(Serial.available()){  // if there is serial data to read...
-         bufferArray[index++] = Serial.read(); // load the current byte into the current array index location
-         if(index == 10){
-          index=0;
-          dataReady = HIGH;
-         }
-
    
-         lcd.print("v");
-     }
-
-    if(dataReady){
-
-      lcd.clear();
-      lcd.print("im here");
-      // setting value of magnitude
-      scale = (float)bufferArray[9];
-
-      if(scale == 1) Mag = 100;
-
-      if(scale == 2) Mag = 10;
-
-      if(scale == 3) Mag = 1;
-
-      if(scale == 4) Mag = 0.1;
-
-      if(scale == 5) Mag = 0.01;
-      
-    // if side is front
-      if(bufferArray[0]==0){
-        PT_total = bufferArray[1];
-        PT_total <<= 8;
-        PT_total = PT_total | bufferArray[2];
-        Front.P_T = (float)PT_total/Mag;
-        Back.P_T = (float)PT_total/Mag;
-      
-        DT_total = bufferArray[3];
-        DT_total <<= 8;
-        DT_total = DT_total | bufferArray[4];
-        Front.D_T = (float)DT_total/Mag;
-        Back.D_T = (float)DT_total/Mag;
-      
-        PR_total = bufferArray[5];
-        PR_total <<= 8;
-        PR_total = PR_total | bufferArray[6];
-        Front.P_R = (float)PR_total/Mag;
-        Back.P_R = (float)PR_total/Mag;
-      
-        DR_total = bufferArray[7];
-        DR_total <<= 8;
-        DR_total = DR_total | bufferArray[8];
-        Front.D_R = (float)DR_total/Mag;
-        Back.D_R = (float)DR_total/Mag;
-
-         lcd.print("yoyo");
-
-      }   
+    Serial.print("2: ");   
+    Serial.println(Grippers[set].AlphaColors[2]);
   
-  // if side is Arm
-      if(bufferArray[0]==1){
-        PT_total = bufferArray[1];
-        PT_total <<= 8;
-        PT_total = PT_total | bufferArray[2];
-        Arm.P_T = (float)PT_total/Mag;
-        Leg.P_T = (float)PT_total/Mag;
-      
-        DT_total = bufferArray[3];
-        DT_total <<= 8;
-        DT_total = DT_total | bufferArray[4];
-        Arm.D_T = (float)DT_total/Mag;
-        Leg.D_T = (float)DT_total/Mag;
-      
-        PR_total = bufferArray[5];
-        PR_total <<= 8;
-        PR_total = PR_total | bufferArray[6];
-        Arm.P_R = (float)PR_total/Mag;
-        Leg.P_R = (float)PR_total/Mag;
-      
-        DR_total = bufferArray[7];
-        DR_total <<= 8;
-        DR_total = DR_total | bufferArray[8];
-        Arm.D_R = (float)DR_total/Mag;
-        Leg.D_R = (float)DR_total/Mag;
- 
-      }   
-         dataReady = LOW;
-    }
- }
 
+    Serial.print("A0: ");   
+    Serial.println(Grippers[set].BetaColors[0]);
+        
+  
+    Serial.print("1: ");   
+    Serial.println(Grippers[set].BetaColors[1]); 
+  
+   
+    Serial.print("2: ");   
+    Serial.println(Grippers[set].BetaColors[2]);
+}
+// led panel ///////////////////////////////////////////////
+void led_Nav(bool n){
+  int x[12] = {0,1,0,7,6,7,0,1,0,7,6,7};
+  int y[12] = {0,0,1,0,0,1,7,7,6,7,7,6};
+  for(int i = 0; i<12; i++){
+    if (n == 1) matrix.drawPixel(x[i], y[i], matrix.Color(0, 255 , 0));
+    else matrix.drawPixel(x[i], y[i], matrix.Color(255, 0 , 0));
+  }
+  matrix.show();
+}
+
+uint32_t led_Rotate(bool dir, uint32_t lastlight){
+  int x[12] = {0,1,0,7,6,7,0,1,0,7,6,7}; int y[12] = {0,0,1,0,0,1,7,7,6,7,7,6};
+  int cwX[4] = {2,7,5,0}; int cwY[4] = {0,2,7,5};
+  int ccwX[4] = {5,7,2,0}; int ccwY[4] = {0,5,7,2}; 
+  
+  for(int i = 0; i<12; i++){
+    matrix.drawPixel(x[i], y[i], matrix.Color(255, 150 , 0));
+  }
+  if (dir == 1){ //CW
+    if((millis() - lastlight) > 200){
+      for(int k=0;k<=c;k++){
+        for(int i=0; i<4; i++){
+          if(i == 0) matrix.drawPixel(cwX[i]+k, cwY[i], matrix.Color(0, 200 , 150));
+          if(i == 1) matrix.drawPixel(cwX[i], cwY[i]+k, matrix.Color(0, 200 , 150));
+          if(i == 2) matrix.drawPixel(cwX[i]-k, cwY[i], matrix.Color(0, 200 , 150));
+          if(i == 3) matrix.drawPixel(cwX[i], cwY[i]-k, matrix.Color(0, 200 , 150));       
+        }
+      }
+      c++;
+     if(c == 5){
+        for(int k=0;k<(c-1);k++){
+          for(int i=0; i<4; i++){
+          if(i == 0) matrix.drawPixel(cwX[i]+k, cwY[i], matrix.Color(0, 0 , 0));
+          if(i == 1) matrix.drawPixel(cwX[i], cwY[i]+k, matrix.Color(0, 0 , 0));
+          if(i == 2) matrix.drawPixel(cwX[i]-k, cwY[i], matrix.Color(0, 0 , 0));
+          if(i == 3) matrix.drawPixel(cwX[i], cwY[i]-k, matrix.Color(0, 0 , 0));       
+        }
+      }
+      c = 0;
+     }
+      lastlight = millis();
+    }
+    
+  }
+  else { //CCW
+        if((millis() - lastlight) > 200){
+      for(int k=0;k<=c;k++){
+        for(int i=0; i<4; i++){
+          if(i == 0) matrix.drawPixel(ccwX[i]-k, ccwY[i], matrix.Color(0, 200 , 150));
+          if(i == 1) matrix.drawPixel(ccwX[i], ccwY[i]-k, matrix.Color(0, 200 , 150));
+          if(i == 2) matrix.drawPixel(ccwX[i]+k, ccwY[i], matrix.Color(0, 200 , 150));
+          if(i == 3) matrix.drawPixel(ccwX[i], ccwY[i]+k, matrix.Color(0, 200 , 150));       
+        }
+      }
+      c++;
+     if(c == 5){
+        for(int k=0;k<(c-1);k++){
+          for(int i=0; i<4; i++){
+          if(i == 0) matrix.drawPixel(ccwX[i]-k, ccwY[i], matrix.Color(0, 0 , 0));
+          if(i == 1) matrix.drawPixel(ccwX[i], ccwY[i]-k, matrix.Color(0, 0 , 0));
+          if(i == 2) matrix.drawPixel(ccwX[i]+k, ccwY[i], matrix.Color(0, 0 , 0));
+          if(i == 3) matrix.drawPixel(ccwX[i], ccwY[i]+k, matrix.Color(0, 0 , 0));       
+        }
+      }
+      c = 0;
+     }
+      lastlight = millis();
+    }
+
+  }
+  matrix.show();
+  return lastlight;
+}
 
