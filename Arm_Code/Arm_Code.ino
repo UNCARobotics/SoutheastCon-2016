@@ -101,13 +101,11 @@ void IR_Hunt(bool Mirror){ //  moves LIL_X until the IRs on the fram and gripper
   if(Mirror == 1) { // side 1/A
     while(IR_package1 != 192 && IR_package2 != 255){ // IRs don't see correct pattern
       toggleStep(LIL_X, LEFT); // move left
-      if(flag) {break;};
     }
   }
   else { // side 2/B
    while(IR_package1 != 192 && IR_package2 != 255){ // IRs don't see correct pattern
       toggleStep(LIL_X, RIGHT); // move right
-      if(flag) {break;};
     }
   }
 }
@@ -116,7 +114,6 @@ void buttonStep(){ // drop BIG_Y until limit or button, if needed drop LIL_Y unt
   bool pressed;
   while(Limits[BIG_Y_MIN] == 0 || ( (R_BUTTON == 0) && (L_BUTTON == 0) ) ){   
     toggleStep(BIG_Y, DOWN);
-    if(flag) {break;};
     if(R_BUTTON == 1 && L_BUTTON == 0){
       pressed = HIGH;
     } 
@@ -124,7 +121,6 @@ void buttonStep(){ // drop BIG_Y until limit or button, if needed drop LIL_Y unt
   if(!pressed){
     while(Limits[LIL_Y_MIN] == 0 || ( (R_BUTTON == 0) && (L_BUTTON == 0) ) ){
       toggleStep(LIL_Y, DOWN);
-      if(flag) {break;};
     }
   }
   
@@ -135,7 +131,6 @@ void limitStep(int Stepper_SL, int Limit_SL, bool spin, int stepSize){   // move
   digitalWrite(Stepper[Stepper_SL].Dir, spin); // sets direction of stepper
   while( Limits[Limit_SL] == 0){ // while limit switch is not pressed
     toggleStep(Stepper_SL, spin);
-    if(flag) {break;};
   }
 }
 
@@ -146,7 +141,6 @@ void Step(int Stepper_SL, int Limit_SL, bool spin, int stepSize, int stepNum){  
 
   while( Limits[Limit_SL] == 0){    // while limit switch is not pressed
     toggleStep(Stepper_SL, spin);
-    if(flag) {break;};
     counter++;
     if (counter > stepNum){
       break;
@@ -170,13 +164,6 @@ void toggleStep(int Stepper_SL, bool spin){ // toggles the Step pin on the drive
   digitalWrite(Stepper[Stepper_SL].Step, LOW);
   delayMicroseconds(500); 
   digitalWrite(Stepper[Stepper_SL].Step, HIGH);
-  
-  // so you know where the stepper is at all times
-  if(spin){ Stepper[Stepper_SL].Place ++; } // if you are going UP or to the RIGHT place is incremented
-  else {Stepper[Stepper_SL].Place --; } // if you are going DOWN or to the LEFT place is incremented
-
-  // fault code so motors stop when they reach the end or home positions, flag is HIGH when you are at either end of the lead screw 
-  if( (Stepper[Stepper_SL].Place > Stepper[Stepper_SL].Max ) || (Stepper[Stepper_SL].Place < 0 )) { flag = HIGH; }
 
   delay(1);  // CHANGE LATER! we want this to be the smallest number possible
 }
