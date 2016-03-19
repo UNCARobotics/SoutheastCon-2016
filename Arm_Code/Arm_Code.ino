@@ -21,6 +21,22 @@ bool mode[3]; // all steppers use the same mode pins
 #define BIG_Y 3
 #define Z 4
 
+struct Steppers {
+  int Dir;
+  int Step;
+  int Sleep; // active HIGH
+  int Place; // current place of stepper, 0 will be left or down most position of lead screw
+  int Max; // max is the number of steps on each lead screw, used for fault code inside toggleStep
+};
+
+Steppers Stepper[5] = { // sets pins for Dir and Step pins on driver
+  {2, 3, 13, 0, 0},
+  {4, 5, 14, 0, 0},
+  {6, 7, 15, 0, 0},
+  {8, 9, 16, 0, 0},
+  {10, 11, 17, 0, 0}
+};
+
 // limit switches              
 #define LIL_X_LEFT   0
 #define LIL_X_RIGHT  1
@@ -41,27 +57,14 @@ bool mode[3]; // all steppers use the same mode pins
 #define Z_IN         12
 #define Z_OUT        13
 
+int Limits[14];
+
 // button
 #define L_BUTTON 14
 #define R_BUTTON 15
 
-struct Steppers {
-  int Dir;
-  int Step;
-  int Sleep; // active HIGH
-  int Place;
-};
-
-Steppers Stepper[5] = {
-  {2,3},
-  {4,5},
-  {6,7},
-  {8,9},
-  {10,11}
-};
-
-int Limits[14];
-
+bool flag = LOW; // for fault code inside toggleStep
+///////////////////////// END OF DECLARATIONS ///////////////////////////////
 void setup() {
   // configure pin modes
   pinMode(MODE_0,OUTPUT);
@@ -84,25 +87,27 @@ void setup() {
     pinMode(Stepper[i].Step, LOW);
     pinMode(Stepper[i].Sleep, HIGH);
   }
-
 }
-
+//////////////////////// END OF SETUP ////////////////////
 void loop() {
 
 
 }
 
+//////////////////////// END OF LOOP /////////////////////
 
-void IR_Hunt(bool Mirror){
-//  senseIRs();   ADD THIS WHEN THIS CODE GOES INTO MASTER CODE!!!!!!
+void IR_Hunt(bool Mirror){ //  moves LIL_X until the IRs on the fram and grippers see the correct IR pattern
+//  senseIRs();  // gets packages from slave                                               ADD THIS WHEN THIS CODE GOES INTO MASTER CODE!!!!!!
   if(Mirror == 1) { // side 1/A
-    while(IR_package1 != 192 && IR_package2 != 255){
+    while(IR_package1 != 192 && IR_package2 != 255){ // IRs don't see correct pattern
       toggleStep(LIL_X, LEFT); // move left
+      if(flag) {break;};
     }
   }
   else { // side 2/B
-   while(IR_package1 != 192 && IR_package2 != 255){
+   while(IR_package1 != 192 && IR_package2 != 255){ // IRs don't see correct pattern
       toggleStep(LIL_X, RIGHT); // move right
+      if(flag) {break;};
     }
   }
 }
@@ -111,6 +116,7 @@ void buttonStep(){ // drop BIG_Y until limit or button, if needed drop LIL_Y unt
   bool pressed;
   while(Limits[BIG_Y_MIN] == 0 || ( (R_BUTTON == 0) && (L_BUTTON == 0) ) ){   
     toggleStep(BIG_Y, DOWN);
+    if(flag) {break;};
     if(R_BUTTON == 1 && L_BUTTON == 0){
       pressed = HIGH;
     } 
@@ -118,6 +124,7 @@ void buttonStep(){ // drop BIG_Y until limit or button, if needed drop LIL_Y unt
   if(!pressed){
     while(Limits[LIL_Y_MIN] == 0 || ( (R_BUTTON == 0) && (L_BUTTON == 0) ) ){
       toggleStep(LIL_Y, DOWN);
+      if(flag) {break;};
     }
   }
   
@@ -128,6 +135,7 @@ void limitStep(int Stepper_SL, int Limit_SL, bool spin, int stepSize){   // move
   digitalWrite(Stepper[Stepper_SL].Dir, spin); // sets direction of stepper
   while( Limits[Limit_SL] == 0){ // while limit switch is not pressed
     toggleStep(Stepper_SL, spin);
+    if(flag) {break;};
   }
 }
 
@@ -138,6 +146,7 @@ void Step(int Stepper_SL, int Limit_SL, bool spin, int stepSize, int stepNum){  
 
   while( Limits[Limit_SL] == 0){    // while limit switch is not pressed
     toggleStep(Stepper_SL, spin);
+    if(flag) {break;};
     counter++;
     if (counter > stepNum){
       break;
@@ -145,7 +154,7 @@ void Step(int Stepper_SL, int Limit_SL, bool spin, int stepSize, int stepNum){  
   }   
 }
 
-void setModes(int stepSize){
+void setModes(int stepSize){ // sets the mode pins on the driver given the stepSize that is wanted
   if (stepSize == 1)   { mode[2] = LOW; mode[1] = LOW; mode[2] = LOW;}; // full step
   if (stepSize == 2)   { mode[2] = LOW; mode[1] = LOW; mode[0] = HIGH;}; // 1/2 step
   if (stepSize == 4)   { mode[2] = LOW; mode[1] = HIGH; mode[0] = LOW;}; // 1/4 step
@@ -157,14 +166,18 @@ void setModes(int stepSize){
   digitalWrite(MODE_2, mode[2]);
 }
 
-void toggleStep(int Stepper_SL, bool spin){
-  digitalWrite(Stepper[Stepper_SL].Step, HIGH);
-  delayMicroseconds(500);
+void toggleStep(int Stepper_SL, bool spin){ // toggles the Step pin on the driver, moves stepper one step
   digitalWrite(Stepper[Stepper_SL].Step, LOW);
+  delayMicroseconds(500); 
+  digitalWrite(Stepper[Stepper_SL].Step, HIGH);
+  
+  // so you know where the stepper is at all times
+  if(spin){ Stepper[Stepper_SL].Place ++; } // if you are going UP or to the RIGHT place is incremented
+  else {Stepper[Stepper_SL].Place --; } // if you are going DOWN or to the LEFT place is incremented
 
-  if(spin){ Stepper[Stepper_SL].Place ++; }
-  else {Stepper[Stepper_SL].Place --; }
+  // fault code so motors stop when they reach the end or home positions, flag is HIGH when you are at either end of the lead screw 
+  if( (Stepper[Stepper_SL].Place > Stepper[Stepper_SL].Max ) || (Stepper[Stepper_SL].Place < 0 )) { flag = HIGH; }
 
-  delay(1);  // CHANGE LATER!
+  delay(1);  // CHANGE LATER! we want this to be the smallest number possible
 }
 
