@@ -1,8 +1,8 @@
 //right now it is based on distance and not time, the stepNum is divided by 3, this makes the constant slope part go faster
 
 
-#define CCW HIGH
-#define CW LOW
+#define CCW LOW
+#define CW HIGH
 
 // all drivers use common/same Mode2, 1, 0 and SLEEP which is why they are not included in the Steppers struckt
 int Sleep = 6;   // SLEEP must be HIGH to allow stepper to move, LOW turns it "off"
@@ -56,9 +56,9 @@ void setup() {
 void loop() {
   Ramp_Delay = Bottom_Speed;
   place = 0;
-  Step(1, CCW, 2000);
+  Step(1, CW, 3000);
 
-  stopStepper();
+//  stopStepper();
 
   delay(5000);
 
@@ -69,17 +69,17 @@ void Step( float stepSize, bool spin , int stepNum){
   setModes(stepSize);
   digitalWrite(Sleep, HIGH);
   digitalWrite(Stepper[0].Dir, spin); // sets  direction of stepper
-  Step_Amount = stepNum/3;
+  Step_Amount = stepNum/4;
   
   // ramp up
-  while(  (place >= 0)   &&   (place < (Step_Amount))  ){
+  while(  (place >= 0)   &&   (place <= (Step_Amount))  ){
     Ramp_Delay -= ((Bottom_Speed-Top_Speed)/Step_Amount);
     toggleStep(Ramp_Delay);
     place++;
   }
 
-  // constant slope
-  while(  (place >= Step_Amount)   &&   (place < (2*Step_Amount))  ){
+  // zero slope
+  while(  (place > Step_Amount)   &&   (place < (3*Step_Amount))  ){
     Ramp_Delay = Top_Speed;
     long timerr = millis();
     //while((millis()-timerr)<1000){
@@ -87,10 +87,11 @@ void Step( float stepSize, bool spin , int stepNum){
     //}
     place++;
   }
+
   Ramp_Delay -= ((Bottom_Speed-Top_Speed)/Step_Amount);
   
   // ramp down
-  while(  (place >= (2*Step_Amount))   &&   (place < (3*Step_Amount))  ){
+  while(  (place >= (3*Step_Amount))   &&   (place < (4*Step_Amount))  ){
      Ramp_Delay += ((Bottom_Speed-Top_Speed)/Step_Amount);
      toggleStep(Ramp_Delay);
      place++;
