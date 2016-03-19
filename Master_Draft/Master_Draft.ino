@@ -82,6 +82,10 @@
   //    ||-2 1-|| 
   // A  ||-3 0-||   L
   //        B
+
+  //Packages being recieved from IR slave, IR_package1 is the gripper's IRs, IR_package2 is the frame's IRs
+   byte IR_package1 = 0; byte IR_package2 = 0;
+  
 // End of Declarations//////////////////////////////////////////////////////////////////////////////////
 
 // GRIPPER CLASS DEFINITION //////////////////////////////////////////////////////////////////////////////////////
@@ -855,7 +859,7 @@ struct trainCar box[2];
     }
   }
   
-  // Truck //////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Truck and IR Slave //////////////////////////////////////////////////////////////////////////////////////////////////////
         void truckSensePings() {  
          float Ping_T1 = 0; float Ping_T2 = 0; float Ping_T3 = 0; float Ping_T4 = 0;
                         
@@ -877,14 +881,14 @@ struct trainCar box[2];
           digitalWrite(SS_T, HIGH);
           
         }
-        void senseIRs() {  
-          int IR_package1 = 0; int IR_package2 = 0;              
+        void senseIRs() {       
          digitalWrite(SS_IR, LOW);  // open communication (direct slave into interupt routine)
            transferAndWait ('i');  // asks to turn pings on, and sets up the first byte transfer
            transferAndWait (2);   //pings are on and first request is recieved  
            //get leading bits, shift them left, get trailing bits, splice them together
-           IR_package1 = ((int)transferAndWait(3) << 8) | (int)transferAndWait(4); 
-           IR_package2 = ((int)transferAndWait(0) << 8) | (int)transferAndWait(0); 
+           IR_package1 = transferAndWait(3) 
+           IR_package2 = transferAndWait(4); 
+           
          digitalWrite(SS_IR, HIGH); // close communication, but pings will continue to read
         }
         
