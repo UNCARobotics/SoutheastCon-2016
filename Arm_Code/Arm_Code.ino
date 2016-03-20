@@ -1,6 +1,6 @@
 // ARM CODE
 
-#define MIRROR // when MIRROR = 1 bot is on ver 1/A (A is the side we started testing on), when MIRROR = 0 bot is on ver 2/B
+#define MIRROR HIGH // when MIRROR = 1 bot is on ver 1/A (A is the side we started testing on), when MIRROR = 0 bot is on ver 2/B
 
 //Packages being recieved from IR slave, IR_package1 hold the gripper's IRs, IR_package2 hold the frame's IRs
 byte IR_package1 = 0; byte IR_package2 = 0;    // GET RID OF THIS WHEN THIS CODE GOES INTO MASTER CODE!!!!!!
@@ -98,7 +98,8 @@ void loop() {
 
 //////////////////////// END OF LOOP /////////////////////
 
-void Arm_Start_Pos(){ // how the arm will be set up for the start
+////////////////////////// FUNCTIONS FOR ARM MOVEMENT ///////////////////////////////////////
+void Arm_Start_Finish_Pos(){ // how the arm will be set up for the start
   limitStep(Z, Z_IN, IN, 1);
   limitStep(BIG_Y, BIG_Y_MIN, DOWN, 1); // OR SHOULD BIG_Y_MIN BE HOME?? WHERE IS HOME FOR BIG_Y AND LIL_Y?
   limitStep(LIL_Y, LIL_Y_MIN, DOWN, 1);
@@ -121,14 +122,116 @@ void Arm_Approach_Barge(bool Mirror){
   }
 }
 
-void Find_Blocks(){
+void Arm_Find_Blocks(){ // drop BIG_Y until limit or IR, if needed drop LIL_Y until limit or IR
+//  senseIRs();  // gets packages from slave                                               ADD THIS WHEN THIS CODE GOES INTO MASTER CODE!!!!!!
+  if(Limits[BIG_Y_MIN] == 0 && IR_package1 == 11111111 && IR_package2 == 11111111 ){   
+    toggleStep(BIG_Y, DOWN);
+  } 
+  
+ else if(Limits[LIL_Y_MIN] == 0 && IR_package1 == 11111111 && IR_package2 == 11111111 ){
+      toggleStep(LIL_Y, DOWN);
+    }
+}
+
+void Arm_Leave_Barge(){ // retract arm a bit so it does not hit things when moving to next location
+  Step(BIG_Y, BIG_Y_MAX, UP, 1 , 300); // BIG_Y up a bit             //SEE WHAT STEP SIZE IS BEST
+  limitStep(Z, Z_IN, IN, 1);
+}  
+
+void Arm_Boat_Pos(){ // position arm so Z is over edge of boat as much as possible to ensure blocks will not bounce out of boat and BIG_Y is down as much as possible to minimize distance blocks are dropped from
+  limitStep(Z, Z_OUT, OUT, 1);
+  limitStep(BIG_Y, BIG_Y_MIN, DOWN, 1);
+}  
+
+void Arm_Truck_Pos(){ // position arm for going into truck
+ limitStep(BIG_Y, BIG_Y_MIN, DOWN, 1);
+ limitStep(LIL_Y, LIL_Y_MIN, DOWN, 1);
+
+ if(MIRROR){ // side is 1/A
+    limitStep(BIG_X, BIG_X_LEFT, LEFT, 1);
+    limitStep(LIL_X, LIL_X_LEFT, LEFT, 1);
+ }
+ else{ // side 2/B
+    limitStep(BIG_X, BIG_X_RIGHT, RIGHT, 1);
+    limitStep(LIL_X, LIL_X_RIGHT, RIGHT, 1);
+ }
+}  
+
+void Arm_First_Train(){
+ limitStep(LIL_Y, LIL_Y_MAX, UP, 1);
+ limitStep(BIG_Y, BIG_Y_HOME, DOWN, 1);
+ limitStep(LIL_Y, LIL_Y_TRAIN, DOWN, 1);
+ limitStep(Z, Z_OUT, OUT, 1);      
+  }
+
+void Arm_Train_Down(bool Mirror){
+  if(Mirror){ // side is 1/A
+    limitStep(LIL_X, LIL_X_LEFT, LEFT, 1);
+  }
+  else{ // side 2/B
+    limitStep(LIL_X, LIL_X_RIGHT, RIGHT, 1);
+  }  
+}
+
+void Arm_Train_Back(bool Mirror){
+  if(Mirror){ // side is 1/A
+    limitStep(LIL_X, LIL_X_RIGHT, RIGHT, 1);
+  }
+  else{ // side 2/B
+    limitStep(LIL_X, LIL_X_LEFT, LEFT, 1);
+  }  
+}
+
+void Arm_Leave_Train(bool Mirror){
+  limitStep(Z, Z_IN, IN, 1);
+  if(Mirror){ // side 1/A
+    limitStep(LIL_X, LIL_X_HOME, LEFT, 1);
+  }
+  else{ // side 2/B
+    limitStep(LIL_X, LIL_X_HOME, RIGHT, 1);
+  }
+}
+
+void Arm_Leave_Boat(){
+  limitStep(Z, Z_IN, IN, 1);
+  limitStep(BIG_Y, BIG_Y_MAX, UP, 1);
+}
+
+void Arm_Leave_BargeA(bool Mirror){
+  Step(BIG_Y, BIG_Y_MAX, UP, 1 , 300); // BIG_Y up a bit             //SEE WHAT STEP SIZE IS BEST
+
+  if(MIRROR){ // side 1/A
+    // move x to right
+    limitStep(BIG_X, BIG_X_RIGHT, RIGHT, 1);
+    limitStep(LIL_X, LIL_X_RIGHT, RIGHT, 1);
+  }
+
+  else{ // side 2/B
+    // move x to left
+    limitStep(BIG_X, BIG_X_LEFT, LEFT, 1);
+    limitStep(LIL_X, LIL_X_LEFT, LEFT, 1);
+  }
+  limitStep(Z, Z_IN, IN, 1);
   
 }
 
+void Arm_BargeB_Reach_Spot(bool Mirror){
+  if(MIRROR){ // side 1/A
+    limitStep(BIG_X, BIG_X_LEFT, LEFT, 1);
+    limitStep(LIL_X, LIL_X_LEFT, LEFT, 1);
+  }
+  else{ // side 2/B
+    limitStep(BIG_X, BIG_X_RIGHT, RIGHT, 1);
+    limitStep(LIL_X, LIL_X_RIGHT, RIGHT, 1);
+ 
+  }
+}
 
+
+////////////////// FUNCTIONS TO BE CALLED IN ARM MOVEMENT FUCNTIONS ///////////////////////////////////////////////
 void IR_Hunt(bool Mirror){ //  moves LIL_X until the IRs on the fram and grippers see the correct IR pattern
 //  senseIRs();  // gets packages from slave                                               ADD THIS WHEN THIS CODE GOES INTO MASTER CODE!!!!!!
-  if(Mirror == 1) { // side 1/A
+  if(Mirror) { // side 1/A
     while(IR_package1 != 192 && IR_package2 != 255){ // IRs don't see correct pattern
       toggleStep(LIL_X, LEFT); // move left
     }
@@ -140,17 +243,14 @@ void IR_Hunt(bool Mirror){ //  moves LIL_X until the IRs on the fram and gripper
   }
 }
 
-void buttonStep(){ // drop BIG_Y until limit, if needed drop LIL_Y until limit or button
-  bool pressed;
-  while(Limits[BIG_Y_MIN] == 0 ){   
+void buttonStep(){ // drop BIG_Y until limit, if needed drop LIL_Y until limit
+  if(Limits[BIG_Y_MIN] == 0 ){   
     toggleStep(BIG_Y, DOWN);
-    } 
-  }
-  if(!pressed){
-    while(Limits[LIL_Y_MIN] == 0 ){
+  } 
+  
+ else if(Limits[LIL_Y_MIN] == 0 ){
       toggleStep(LIL_Y, DOWN);
     }
-  }
   
 }
 
