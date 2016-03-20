@@ -14,7 +14,6 @@ struct IR frame[6];
 // 1 means it doesn't see anything, 0 means it does
 
 volatile byte command = 0;   // stores value recieved from master, tells slave what case to run
-volatile int on = 0; //turns sensor on and off
 byte package[2] = {0};
 
 
@@ -61,7 +60,6 @@ ISR (SPI_STC_vect)
   case 0:
     command = c;
     SPDR = 0;
-    on = 1;     //getting a trasfer? turn on sensors
     break;
     
   case 'i':
@@ -73,27 +71,18 @@ ISR (SPI_STC_vect)
     command = c;
     SPDR = package[1]; 
     break;
-
- 
-  case 'q':             //reciving 'q' primes the slave to turn off sensors
-    command = c;
-    SPDR = 0;  // trailing byte of ping 2 on last transmition
-    on = 0;               //turn off sensors
-    break;
     
   } // end of switch
 }  // end of Interupt //////////////////////////////////////////////////////////////////////
 
 void loop(){
-  on = 1;
-   if (on == 1){       //only if told, turn sensors on
+          //only if told, turn sensors on
       for(int i = 0; i < 6; i++){
           grippers[i].state = (byte)gripperReading(i);
           frame[i].state = (byte)frameReading(i);
       }
       packageData();
       printDebug();
-  }
     // if SPI not active, clear current command
   if (digitalRead (SS) == HIGH){
       command = 0;

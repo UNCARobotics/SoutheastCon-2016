@@ -118,6 +118,7 @@
         digitalWrite(SSL, LOW);   
           checkA =transferAndWait ('s');  //request button condition
           checkA =transferAndWait ('s');  //recieve button condition 
+          checkA =transferAndWait ('s');  //recieve button condition 
           //after frist transfer it could recieve on either transfer
         digitalWrite(SSL, HIGH);
         // Master will recieve B11110000, if button is pressed
@@ -284,7 +285,7 @@
          digitalWrite(SSL, HIGH); // close communication, but pings will continue to read
         }
         
-        void senseTruckPins(byte x) {                 
+        void senseTruckPings(byte x) {                 
          digitalWrite(SSL, LOW);  // open communication (direct slave into interupt routine)
          if (x = 'r'){
            transferAndWait ('r');  // asks to turn pings on, and sets up the first byte transfer
@@ -703,6 +704,7 @@ struct trainCar box[2];
     Back.stopPings();
     Arm.stopPings();
     Leg.stopPings();
+    
       
   }
   
@@ -907,7 +909,7 @@ void  Truck_Nav_LineUp(bool mirror, float L){
     Ns_R = -Back.PD_R();
     Avg_ErR = Back.getAvg_ErR();
     
-    Truck_R.sensePings();
+    Truck_R.senseTruckPings();
     Ns_Trk = Truck_R.Truck_PD(305);
     Avg_ErTrk = Truck_R.getAvg_ErT();
 
@@ -924,7 +926,7 @@ void  Truck_Nav_LineUp(bool mirror, float L){
     Ns_R = Front.PD_R();
     Avg_ErR = Front.getAvg_ErR();
     
-    Truck_L.sensePings();
+    Truck_L.senseTruckPings();
     Ns_Trk = Truck_L.Truck_PD(305);
     Avg_ErTrk = Truck_L.getAvg_ErT();
 
@@ -945,6 +947,8 @@ void  Truck_Nav_LineUp(bool mirror, float L){
   if(Avg_ErTrk < 2 && Avg_ErT_al < 2 && Avg_ErR/2 < 2){
       printReadings(0,1,0,1);
       stopDrive();
+      Truck_L.stopPings();
+      Truck_R.stopPings();
       led_Truckline(0);
       return;
     }
@@ -968,6 +972,7 @@ void Truck_Nav_dock(bool mirror){
   fill_error_arrays();
   while(1){
     led_Truck(1); 
+    
     Leg.sensePings();
     Ns_R = -Leg.PD_R();
     Avg_ErR = Leg.getAvg_ErR();
@@ -975,7 +980,9 @@ void Truck_Nav_dock(bool mirror){
     Truck_Arm.sensePings();
     Truck_Arm.Truck_Arm_PD(mirror);
     Avg_ErT_al = Truck_Arm.getAvg_ErT();
-    
+
+    Truck_L.senseTruckPings();
+    Truck_R.senseTruckPings();
     Ns_Trk = Truck_L.Truck_PD(305);
     Ns_Trk -= Truck_R.Truck_PD(305);
     Avg_ErTrk1 = Truck_R.getAvg_ErT();
@@ -989,6 +996,8 @@ void Truck_Nav_dock(bool mirror){
     if(Avg_ErT_al < 2){
         printReadings(0,1,0,1);
         stopDrive();
+        Truck_L.stopPings();
+        Truck_R.stopPings();
         led_Truck(2);
         return;
     }
@@ -1047,27 +1056,6 @@ void Truck_Nav_dock(bool mirror){
   }
   
   // Truck and IR Slave //////////////////////////////////////////////////////////////////////////////////////////////////////
-        void truckSensePings() {  
-         float Ping_T1 = 0; float Ping_T2 = 0; float Ping_T3 = 0; float Ping_T4 = 0;
-                        
-         digitalWrite(SS_T, LOW);  // open communication (direct slave into interupt routine)
-           transferAndWait ('t');  // asks to turn pings on, and sets up the first byte transfer
-           transferAndWait (2);   //pings are on and first request is recieved  
-           //get leading bits, shift them left, get trailing bits, splice them together
-           Ping_T1 = ((int)transferAndWait(3) << 8) | (int)transferAndWait(4); 
-           Ping_T2 = ((int)transferAndWait(5) << 8) | (int)transferAndWait(6); 
-           Ping_T3 = ((int)transferAndWait(7) << 8) | (int)transferAndWait(8); 
-           Ping_T4 = ((int)transferAndWait(0) << 8) | (int)transferAndWait(0); 
-         digitalWrite(SS_T, HIGH); // close communication, but pings will continue to read
-        }
-        
-        void TruckstopPings(){
-          digitalWrite(SS_T, LOW);   
-          transferAndWait ('q');  // add command 
-          transferAndWait (2);  // add command
-          digitalWrite(SS_T, HIGH);
-          
-        }
         void senseIRs() {       
          digitalWrite(SS_IR, LOW);  // open communication (direct slave into interupt routine)
            transferAndWait ('i');  // asks to turn pings on, and sets up the first byte transfer
@@ -1077,13 +1065,6 @@ void Truck_Nav_dock(bool mirror){
            IR_package2 = transferAndWait(4); 
            
          digitalWrite(SS_IR, HIGH); // close communication, but pings will continue to read
-        }
-        
-        void stopIRs(){
-          digitalWrite(SS_IR, LOW);   
-          transferAndWait ('q');  // add command 
-          transferAndWait (2);  // add command
-          digitalWrite(SS_IR, HIGH);
         }
        
 // Transfer and Wait /////////////////////////////////////////////////////////////////////////////////////////////        
