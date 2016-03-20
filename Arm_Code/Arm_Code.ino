@@ -78,7 +78,7 @@ void loop() {
 
 ////////////////////////// ARM MOVEMENT FUNCTIONS TO BE CALLED BY MASTER ///////////////////////////////////////
 void Arm_Start_Finish_Pos(){ // how arm will be set up for the start
-  limitStep(Z, 'z','I', IN, 1);
+  limitStep(Z, 'Z','I', IN, 1);
   limitStep(BIG_Y, 'Y', 'D', DOWN, 1); // OR SHOULD BIG_Y_DOWN BE HOME?? WHERE IS HOME FOR BIG_Y AND LIL_Y?
   limitStep(LIL_Y, 'y', 'D', DOWN, 1);
   limitStep(BIG_X, 'X', 'H', LEFT, 1); 
