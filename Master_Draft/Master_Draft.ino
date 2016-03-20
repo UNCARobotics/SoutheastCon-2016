@@ -321,8 +321,7 @@
           return NewSpeed;
         }
 
-        float lineUp_PD(){
-          float setpoint = 305;
+        float Truck_PD(float setpoint){
           float Prev_Error, Correction, NewSpeed;
           int T = 1; // condition for averaging translation in Avg_error function
           
@@ -334,8 +333,22 @@
          
           return NewSpeed;
         }
+
+        float Truck_Arm_PD(bool mirror){
+          float setpoint = 400;
+          float Prev_Error, Correction, NewSpeed;
+          int T = 1; // condition for averaging translation in Avg_error function
+          
+          Prev_Error = Error_T;
+          if (mirror == 1) Error_T = Ping2 - setpoint; 
+          else Error_T = Ping1 - setpoint;
+          Avg_Error(Error_T, T);
+          Correction = P_T*(Error_T) + D_T*(Error_T - Prev_Error);
+          NewSpeed = BaseSpeed + Correction;
+         
+          return NewSpeed;
+        }
     
-        
         float PD_R(){ // PD caculation for rotation
           float Prev_Error, Correction, NewSpeed;
           int R = 0;  // condition for averaging Rotation in Avg_error function
@@ -413,13 +426,16 @@ struct trainCar box[2];
    }; 
    
   //Sides
-            // PT,   DT,   PR,   DR
-  Side Front   {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_2};
-  Side Back    {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_3};
-  Side Arm     {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_4};
-  Side Leg     {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_5};
-  Side Truck_R {0,   0,   0,     0,  0, 0, 0, 0, {},{},0,0, SS_T};
-  Side Truck_L {0,   0,   0,     0,  0, 0, 0, 0, {},{},0,0, SS_T};
+               // PT,   DT,   PR,  DR
+  Side Front     {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_2};
+  Side Back      {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_3};
+  Side Arm       {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_4};
+  Side Leg       {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_5};
+  // small P gains below. Small moves Ellie
+  Side Truck_R   {0,   0,   0,     0,  0, 0, 0, 0, {},{},0,0, SS_T};
+  Side Truck_L   {0,   0,   0,     0,  0, 0, 0, 0, {},{},0,0, SS_T};
+  Side Truck_Arm {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_4};
+  Side Truck_Leg {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_5};
 
   Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(8, 8, LED_PIN,
   NEO_MATRIX_LEFT     + NEO_MATRIX_TOP +
@@ -874,7 +890,7 @@ void  Truck_Nav_LineUp(bool mirror, float L){
     Avg_ErR = Back.getAvg_ErR();
     
     Truck_R.sensePings();
-    Ns_Trk = Truck_R.lineUp_PD();
+    Ns_Trk = Truck_R.Truck_PD(305);
     Avg_ErTrk = Truck_R.getAvg_ErT();
 
     if (TooFar_flag == 0){
@@ -891,7 +907,7 @@ void  Truck_Nav_LineUp(bool mirror, float L){
     Avg_ErR = Front.getAvg_ErR();
     
     Truck_L.sensePings();
-    Ns_Trk = Truck_L.lineUp_PD();
+    Ns_Trk = Truck_L.Truck_PD(305);
     Avg_ErTrk = Truck_L.getAvg_ErT();
 
       if (TooFar_flag == 0){
@@ -924,6 +940,50 @@ void  Truck_Nav_LineUp(bool mirror, float L){
     printReadings(0,1,0,1); //print the Sonar readings to the LCD screen
     setDrive(); //everything so far stored motor change data, now tell the motors to use that data
   }  
+}
+
+void Truck_Nav_dock(bool mirror){
+  float Ns_Tal = 0; float Avg_ErT_al = 100;    //new speed; Avg Error; for arm translation
+    float Ns_Trk = 0; float Avg_ErTrk1 = 100; float Avg_ErTrk2 = 100;   //new speed; Avg Error;for Truck Sideways translation
+    float Ns_R = 0;   float Avg_ErR = 100;       //new speed; Avg Error; for all Rotation
+    
+  fill_error_arrays();
+  while(1){
+    led_Truck(1); 
+    Leg.sensePings();
+    Ns_R = -Leg.PD_R();
+    Avg_ErR = Leg.getAvg_ErR();
+  
+    Truck_Arm.sensePings();
+    Truck_Arm.Truck_Arm_PD(mirror);
+    Avg_ErT_al = Truck_Arm.getAvg_ErT();
+    
+    Ns_Trk = Truck_L.Truck_PD(305);
+    Ns_Trk -= Truck_R.Truck_PD(305);
+    Avg_ErTrk1 = Truck_R.getAvg_ErT();
+    Avg_ErTrk2 = Truck_L.getAvg_ErT();
+    
+    if((Avg_ErTrk1 > 100) || (Avg_ErTrk2 > 100)){
+      Ns_Tal = 0; //if not lined up don't move forward
+      led_Truck(0); 
+    }
+    
+    if(Avg_ErT_al < 2){
+        printReadings(0,1,0,1);
+        stopDrive();
+        led_Truck(2);
+        return;
+    }
+    // Sum all speed caculations in proper orintation for mecanum drive
+      Motor[0].Speed = Ns_Tal - Ns_R - Ns_Trk;
+      Motor[1].Speed = -Ns_Tal - Ns_R + Ns_Trk;
+      Motor[2].Speed = -Ns_Tal + Ns_R - Ns_Trk;
+      Motor[3].Speed = Ns_Tal + Ns_R + Ns_Trk;
+    
+      flipMotors();
+      printReadings(0,1,0,1); //print the Sonar readings to the LCD screen
+      setDrive(); //everything so far stored motor change data, now tell the motors to use that data
+  }
 }
 
 
@@ -995,7 +1055,7 @@ void  Truck_Nav_LineUp(bool mirror, float L){
            transferAndWait ('i');  // asks to turn pings on, and sets up the first byte transfer
            transferAndWait (2);   //pings are on and first request is recieved  
            //get leading bits, shift them left, get trailing bits, splice them together
-           IR_package1 = transferAndWait(3) 
+           IR_package1 = transferAndWait(3); 
            IR_package2 = transferAndWait(4); 
            
          digitalWrite(SS_IR, HIGH); // close communication, but pings will continue to read
@@ -1188,6 +1248,10 @@ void led_Truckline(bool n){
       }
     }
   }
+  
+}
+
+void led_Truck(int crushedIt){
   
 }
 
