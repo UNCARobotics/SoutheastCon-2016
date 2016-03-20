@@ -8,7 +8,7 @@ byte IR_package1 = 0; byte IR_package2 = 0;    // GET RID OF THIS WHEN THIS CODE
 #define MODE_2  A14 // all drivers share Mode2, 1, 0, these hold the values for the step size
 #define MODE_1  A13
 #define MODE_0  A12
-bool mode[3]; // used to set the modes
+bool stepMode[3]; // used to set the modes
 
 // stepper motors
 struct Steppers {
@@ -19,7 +19,7 @@ struct Steppers {
   int Max; // max is the number of steps on each lead screw, used for fault code inside toggleStep
 };
 
-Steppers Stepper[5] = { // sets pins for Dir, Step, and Sleep pins and intializes place and max
+Steppers ArmMotor[5] = { // sets pins for Dir, Step, and Sleep pins and intializes place and max
   {23, 25, 27, 0, 0}, // LIL_X, 5 on PCB
   {29, 31, 33, 0, 0}, // BIG_X,, 4 on PCB
   {35, 37, 39, 0, 0},  // LIL_Y, 3 on PCB
@@ -42,27 +42,6 @@ Steppers Stepper[5] = { // sets pins for Dir, Step, and Sleep pins and intialize
 #define OUT HIGH // for Z                                 // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
 #define IN LOW  // for Z                                  // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
 
-// limit switches        /// GET THE CORRECT PINS!! FOR THE LIMIT SWITCHES ////////            
-#define LIL_X_LEFT   0
-#define LIL_X_RIGHT  1
-#define LIL_X_HOME   2
-
-#define BIG_X_LEFT   3
-#define BIG_X_RIGHT  4
-#define BIG_X_HOME   5
-
-#define LIL_Y_DOWN   6
-#define LIL_Y_UP     7
-#define LIL_Y_TRAIN  8
-
-#define BIG_Y_DOWN    9
-#define BIG_Y_UP    10
-#define BIG_Y_HOME   11
-
-#define Z_IN         12
-#define Z_OUT        13
-
-int Limits[14]; // array for limit switches that hold 0 if limit switch is not pressed and 1 if it is
 
 bool flag = LOW; // for fault code inside toggleStep
 ///////////////////////// END OF DECLARATIONS ///////////////////////////////
@@ -73,9 +52,9 @@ void setup() {
   pinMode(MODE_2,OUTPUT);
   
   for (int i = 0; i < 1; i++) {
-    pinMode(Stepper[i].Dir, OUTPUT);
-    pinMode(Stepper[i].Step, OUTPUT);
-    pinMode(Stepper[i].Sleep, OUTPUT);
+    pinMode(ArmMotor[i].Dir, OUTPUT);
+    pinMode(ArmMotor[i].Step, OUTPUT);
+    pinMode(ArmMotor[i].Sleep, OUTPUT);
   }
 
   // initialize vars
@@ -84,9 +63,9 @@ void setup() {
   digitalWrite(MODE_2, LOW);
 
  for (int i = 0; i < 1; i++) {
-    digitalWrite(Stepper[i].Dir, HIGH);
-    pinMode(Stepper[i].Step, LOW);
-    pinMode(Stepper[i].Sleep, HIGH);
+    digitalWrite(ArmMotor[i].Dir, HIGH);
+    pinMode(ArmMotor[i].Step, LOW);
+    pinMode(ArmMotor[i].Sleep, HIGH);
   }
 }
 //////////////////////// END OF SETUP ////////////////////
@@ -257,18 +236,18 @@ void buttonStep(){ // movement of arm while master asks girpper if the buttons h
 
 void limitStep(int Stepper_SL, int Limit_SL, bool spin, int stepSize){   // moves the stepper until the limit switch is tripped
   setModes(stepSize);
-  digitalWrite(Stepper[Stepper_SL].Dir, spin); // sets direction of stepper
+  digitalWrite(ArmMotor[Stepper_SL].Dir, spin); // sets direction of stepper
   while( Limits[Limit_SL] == 0){ // while limit switch is not pressed
     toggleStep(Stepper_SL, spin);
   }
 }
 
-void Step(int Stepper_SL, int Limit_SL, bool spin, int stepSize, int stepNum){  // moves the stepper for certain amounts of steps unless limit switch is tripped
+void Step(int Stepper_SL, byte axis, byte Switch, bool spin, int stepSize, int stepNum){  // moves the stepper for certain amounts of steps unless limit switch is tripped
   int countSteps = 0; // counts number of steps travelled by stepper
   setModes(stepSize);
-  digitalWrite(Stepper[Stepper_SL].Dir, spin); // sets direction of stepper
+  digitalWrite(ArmMotor[Stepper_SL].Dir, spin); // sets direction of stepper
 
-  while( Limits[Limit_SL] == 0){    // while limit switch is not pressed
+  while(getLimits(axis, Switch) == 0){    // while limit switch is not pressed
     toggleStep(Stepper_SL, spin);
     countSteps++;
     if (countSteps > stepNum){ // if it has travelled the number of steps it was told to
@@ -277,24 +256,37 @@ void Step(int Stepper_SL, int Limit_SL, bool spin, int stepSize, int stepNum){  
   }   
 }
 
+bool getLimits(byte axis, byte Switch){
+  bool Limit = 0;
+  byte Tripped = 0;
+    digitalWrite(SS_LS, LOW);   
+        transferAndWait (axis);  //request button condition
+        Tripped = transferAndWait (0);  //recieve button condition 
+    digitalWrite(SS_LS, HIGH);
+         Limit = (Tripped == Switch) ? 1 : 0;
+          return Limit;
+    
+  
+}
+
 void setModes(int stepSize){ // sets the mode pins on the driver given the stepSize that is wanted
-  if (stepSize == 1)   { mode[2] = LOW; mode[1] = LOW; mode[2] = LOW;}; // full step
-  if (stepSize == 2)   { mode[2] = LOW; mode[1] = LOW; mode[0] = HIGH;}; // 1/2 step
-  if (stepSize == 4)   { mode[2] = LOW; mode[1] = HIGH; mode[0] = LOW;}; // 1/4 step
-  if (stepSize == 8)   { mode[2] = LOW; mode[1] = HIGH; mode[0] = HIGH;}; // 8 microsteps per step
-  if (stepSize == 16)  { mode[2] = HIGH; mode[1] = LOW; mode[0] = LOW;}; // 16 microsteps per step
-  if (stepSize == 32)  { mode[2] = HIGH; mode[1] = LOW; mode[0] = HIGH;}; // 32 microsteps per step
+  if (stepSize == 1)   { stepMode[2] = LOW; stepMode[1] = LOW; stepMode[2] = LOW;}; // full step
+  if (stepSize == 2)   { stepMode[2] = LOW; stepMode[1] = LOW; stepMode[0] = HIGH;}; // 1/2 step
+  if (stepSize == 4)   { stepMode[2] = LOW; stepMode[1] = HIGH; stepMode[0] = LOW;}; // 1/4 step
+  if (stepSize == 8)   { stepMode[2] = LOW; stepMode[1] = HIGH; stepMode[0] = HIGH;}; // 8 microsteps per step
+  if (stepSize == 16)  { stepMode[2] = HIGH; stepMode[1] = LOW; stepMode[0] = LOW;}; // 16 microsteps per step
+  if (stepSize == 32)  { stepMode[2] = HIGH; stepMode[1] = LOW; stepMode[0] = HIGH;}; // 32 microsteps per step
   // assign mode pins HIGH or LOW
-  digitalWrite(MODE_0, mode[0]);
-  digitalWrite(MODE_1, mode[1]);
-  digitalWrite(MODE_2, mode[2]);
+  digitalWrite(MODE_0, stepMode[0]);
+  digitalWrite(MODE_1, stepMode[1]);
+  digitalWrite(MODE_2, stepMode[2]);
 }
 
 void toggleStep(int Stepper_SL, bool spin){ // toggles the Step pin on the driver, moves stepper one step
   // toggles on the rising edge
-  digitalWrite(Stepper[Stepper_SL].Step, LOW);
+  digitalWrite(ArmMotor[Stepper_SL].Step, LOW);
   delayMicroseconds(500); // don't change this delay!!
-  digitalWrite(Stepper[Stepper_SL].Step, HIGH);
+  digitalWrite(ArmMotor[Stepper_SL].Step, HIGH);
 
   delay(1);  // CHANGE LATER! we want this to be the smallest number possible that allows the motors to move
 }
