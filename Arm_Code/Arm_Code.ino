@@ -10,9 +10,11 @@ byte IR_package1 = 0; byte IR_package2 = 0;    // GET RID OF THIS WHEN THIS CODE
 #define MODE_0  10
 #define UP HIGH // for LIL_Y and BIG_Y
 #define DOWN LOW // for LIL_Y and BIG_Y
-#define RIGHT HIGH //  for LIL_X, BIG_X, and Z            // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
-#define LEFT LOW // for LIL_X, BIG_X, and Z               // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
-bool mode[3]; // all steppers use the same mode pins 
+#define RIGHT HIGH //  for LIL_X and BIG_X                // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
+#define LEFT LOW // for LIL_X and BIG_X                   // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
+#define OUT HIGH // for Z                                 // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
+#define IN LOW  // for Z                                  // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
+bool mode[3]; // all steppers use the same mode pins  
 
 // stepper motors
 #define LIL_X 0
@@ -96,6 +98,34 @@ void loop() {
 
 //////////////////////// END OF LOOP /////////////////////
 
+void Arm_Start_Pos(){ // how the arm will be set up for the start
+  limitStep(Z, Z_IN, IN, 1);
+  limitStep(BIG_Y, BIG_Y_MIN, DOWN, 1); // OR SHOULD BIG_Y_MIN BE HOME?? WHERE IS HOME FOR BIG_Y AND LIL_Y?
+  limitStep(LIL_Y, LIL_Y_MIN, DOWN, 1);
+  limitStep(BIG_X, BIG_X_HOME, LEFT, 1); 
+  limitStep(LIL_X, LIL_X_HOME, LEFT, 1);
+}
+
+void Arm_Approach_Barge(bool Mirror){
+  limitStep(BIG_Y, BIG_Y_MAX, UP, 1);
+  limitStep(LIL_Y, LIL_Y_MAX, UP, 1);
+  limitStep(Z, Z_OUT, OUT, 1);
+    
+  if(Mirror) { // side 1/A
+    limitStep(LIL_X, LIL_X_RIGHT, RIGHT, 1);
+    limitStep(BIG_X, BIG_X_HOME, RIGHT, 1); 
+  }
+  else { // side 2/B
+    limitStep(LIL_X, LIL_X_LEFT, LEFT, 1);
+    limitStep(BIG_X, BIG_X_HOME, LEFT, 1);
+  }
+}
+
+void Find_Blocks(){
+  
+}
+
+
 void IR_Hunt(bool Mirror){ //  moves LIL_X until the IRs on the fram and grippers see the correct IR pattern
 //  senseIRs();  // gets packages from slave                                               ADD THIS WHEN THIS CODE GOES INTO MASTER CODE!!!!!!
   if(Mirror == 1) { // side 1/A
@@ -110,16 +140,14 @@ void IR_Hunt(bool Mirror){ //  moves LIL_X until the IRs on the fram and gripper
   }
 }
 
-void buttonStep(){ // drop BIG_Y until limit or button, if needed drop LIL_Y until limit or button
+void buttonStep(){ // drop BIG_Y until limit, if needed drop LIL_Y until limit or button
   bool pressed;
-  while(Limits[BIG_Y_MIN] == 0 || ( (R_BUTTON == 0) && (L_BUTTON == 0) ) ){   
+  while(Limits[BIG_Y_MIN] == 0 ){   
     toggleStep(BIG_Y, DOWN);
-    if(R_BUTTON == 1 && L_BUTTON == 0){
-      pressed = HIGH;
     } 
   }
   if(!pressed){
-    while(Limits[LIL_Y_MIN] == 0 || ( (R_BUTTON == 0) && (L_BUTTON == 0) ) ){
+    while(Limits[LIL_Y_MIN] == 0 ){
       toggleStep(LIL_Y, DOWN);
     }
   }

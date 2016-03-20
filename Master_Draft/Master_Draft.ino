@@ -935,7 +935,7 @@ void  Truck_Nav_LineUp(bool mirror, float L){
       while(pressed != 1){
         pressed = 0;
         
-        //armMovesDown();
+        buttonStep();
         pressed += Grippers[0].buttonCheck();
        // pressed += Grippers[1].buttonCheck();
         delayMicroseconds(50);
