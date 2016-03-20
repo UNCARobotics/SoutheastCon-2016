@@ -10,41 +10,48 @@
   #include <Adafruit_GFX.h>
   #include <Adafruit_NeoMatrix.h>
   #include <Adafruit_NeoPixel.h>
-
-  #define LED_PIN 6
+  #include <SoftwareSerial.h>
+  
+  #define LED_PIN 26
+  const int TxPin = A0;
   #define ER_ARRAY_SIZE 30
   
-  //Side Pings
-  #define SS_2 38 
-  #define SS_3 40
-  #define SS_4 42
-  #define SS_5 44
-  #define SS_T 20
-  #define SS_IR 21
+  //Motor Drivers
+  #define M2_D2 2
+  #define M2_IN1 3
+  #define M2_IN2 4
 
-  #define SS_BG1 6
-  #define SS_BG2 16 
-  #define SS_AG1 7 
-  #define SS_AG2 18 
-    
-  #define M0_IN1 48
-  #define M0_IN2 49
-  #define M0_D2 4
-
-  #define M1_IN1 34
-  #define M1_IN2 35
-  #define M1_D2 5 
+  #define M3_D2 5
+  #define M3_IN1 6
+  #define M3_IN2 7
   
-  #define M2_IN1 30
-  #define M2_IN2 31
-  #define M2_D2 3
+  #define M0_D2 8
+  #define M0_IN1 9
+  #define M0_IN2 10
   
-  #define M3_IN1 33
-  #define M3_IN2 32
-  #define M3_D2 2
+  #define M1_D2 11 
+  #define M1_IN1 12
+  #define M1_IN2 13
   
-  #define EN_M0_M1 46
+  #define EN_M0_M1 24
   #define EN_M2_M3 22
+  
+  //Side Pings
+  #define SS_P2 30 //Front 
+  #define SS_P3 A2 //Back
+  #define SS_P4 A3 //Arm
+  #define SS_P5 32 //Leg
+  #define SS_T 40  //Truck Pings
+  #define SS_IR 38 //IR slave
+  #define SS_LS A6//Limit Switches
+  
+ // Gripper 
+  #define SS_BG1 44
+  #define SS_BG2 46
+  #define SS_AG1 42 
+  #define SS_AG2 48 
+  
+  
 
   //checking millis for loop time correction
   long timer = 0;
@@ -55,7 +62,8 @@
   int c = 0; //counter for led panel  
   
   // initialize the library with the numbers of the interface pins
-  LiquidCrystal lcd(39, 41, 43, 45, 47, 37);
+  
+  SoftwareSerial mySerial = SoftwareSerial(255, TxPin);
 
   Pixy pixy;
 
@@ -427,15 +435,15 @@ struct trainCar box[2];
    
   //Sides
                // PT,   DT,   PR,  DR
-  Side Front     {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_2};
-  Side Back      {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_3};
-  Side Arm       {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_4};
-  Side Leg       {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_5};
+  Side Front     {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_P2};
+  Side Back      {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_P3};
+  Side Arm       {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_P4};
+  Side Leg       {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_P5};
   // small P gains below. Small moves Ellie
   Side Truck_R   {0,   0,   0,     0,  0, 0, 0, 0, {},{},0,0, SS_T};
   Side Truck_L   {0,   0,   0,     0,  0, 0, 0, 0, {},{},0,0, SS_T};
-  Side Truck_Arm {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_4};
-  Side Truck_Leg {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_5};
+  Side Truck_Arm {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_P4};
+  Side Truck_Leg {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_P5};
 
   Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(8, 8, LED_PIN,
   NEO_MATRIX_LEFT     + NEO_MATRIX_TOP +
@@ -448,15 +456,25 @@ struct trainCar box[2];
   void setup() {
     // for communicating with Processing
     Serial.begin(115200);
-
+    
+    //LCD
+    pinMode(TxPin, OUTPUT);
+    digitalWrite(TxPin, HIGH);
+    mySerial.begin(9600);
+    mySerial.write(12);                 // Clear             
+    mySerial.write(17);                 // Turn backlight on
+    delay(5); 
+    mySerial.print("Lt. Ripley");  // First line
+    mySerial.write(13);                 // Form feed
+    mySerial.print("Testing");   // Second line
+    mySerial.write(212);                // Quarter note
+    mySerial.write(220);                // A tone
+    delay(3000);                        // Wait 3 seconds// Required delay
+    
     matrix.begin();
     matrix.show();
     matrix.setBrightness(20);
     
-    lcd.begin(16, 2); // set up the LCD's number of columns and rows
-    lcd.print("IEEE TESTING");   // Print a message to the LCD.
-    delay(2000);
-    lcd.clear();
 
     pixy.init(); //Initiate the PIXY
     
@@ -472,14 +490,14 @@ struct trainCar box[2];
     }
     
     //All Ping SPI slave select pins
-    pinMode(SS_2, OUTPUT); 
-    digitalWrite(SS_2, HIGH);  
-    pinMode(SS_3, OUTPUT); 
-    digitalWrite(SS_3, HIGH);
-    pinMode(SS_4, OUTPUT); 
-    digitalWrite(SS_4, HIGH);
-    pinMode(SS_5, OUTPUT); 
-    digitalWrite(SS_5, HIGH);
+    pinMode(SS_P2, OUTPUT); 
+    digitalWrite(SS_P2, HIGH);  
+    pinMode(SS_P3, OUTPUT); 
+    digitalWrite(SS_P3, HIGH);
+    pinMode(SS_P4, OUTPUT); 
+    digitalWrite(SS_P4, HIGH);
+    pinMode(SS_P5, OUTPUT); 
+    digitalWrite(SS_P5, HIGH);
   // Put SCK, MOSI, SS pins into output mode
   // also put SCK, MOSI into LOW state, and SS into HIGH state.
   // Then put SPI hardware into Master mode and turn SPI on
@@ -995,7 +1013,7 @@ void Truck_Nav_dock(bool mirror){
       while(pressed != 1){
         pressed = 0;
         
-        buttonStep();
+       // buttonStep();
         pressed += Grippers[0].buttonCheck();
        // pressed += Grippers[1].buttonCheck();
         delayMicroseconds(50);
@@ -1076,58 +1094,58 @@ void Truck_Nav_dock(bool mirror){
       } 
   // PRINTS ///////////////////////////////////////////////////////////////
  void printCountdown(){
-    lcd.clear();
-    lcd.print("Ready...3");
-    delay(1000);
-    lcd.clear();
-    lcd.print("Ready...2");
-    delay(1000);
-    lcd.clear();
-    lcd.print("Ready...1");
-    delay(1000);
+//    lcd.clear();
+//    lcd.print("Ready...3");
+//    delay(1000);
+//    lcd.clear();
+//    lcd.print("Ready...2");
+//    delay(1000);
+//    lcd.clear();
+//    lcd.print("Ready...1");
+//    delay(1000);
  }
   
   void printReadings(float F, float B, float A, float L) {
     //Function for debugging. It prints Front and Arm sonar reading to the LCD. 
-    if (F){
-      lcd.setCursor(0, 0);
-      lcd.print("F  ");   
-      lcd.print(Front.Ping1);
-      
-      lcd.setCursor(7, 0);
-      lcd.print(" ");
-      lcd.print(Front.Ping2);
-    }
-    
-    if (B){
-      lcd.setCursor(0, 0);
-      lcd.print("B  ");   
-      lcd.print(Back.Ping1);
-      
-      lcd.setCursor(7, 0);
-      lcd.print(" ");
-      lcd.print(Back.Ping2);      
-    }
-    
-    if (A){
-      lcd.setCursor(0, 1);
-      lcd.print("A  ");   
-      lcd.print(Arm.Ping1);
-      
-      lcd.setCursor(7, 1);
-      lcd.print(" "); 
-      lcd.print(Arm.Ping2);
-    }
-    
-    if (L){
-      lcd.setCursor(0, 1);
-      lcd.print("L  ");   
-      lcd.print(Leg.Ping1);
-      
-      lcd.setCursor(7, 1);
-      lcd.print(" "); 
-      lcd.print(Leg.Ping2);
-    }
+//    if (F){
+//      lcd.setCursor(0, 0);
+//      lcd.print("F  ");   
+//      lcd.print(Front.Ping1);
+//      
+//      lcd.setCursor(7, 0);
+//      lcd.print(" ");
+//      lcd.print(Front.Ping2);
+//    }
+//    
+//    if (B){
+//      lcd.setCursor(0, 0);
+//      lcd.print("B  ");   
+//      lcd.print(Back.Ping1);
+//      
+//      lcd.setCursor(7, 0);
+//      lcd.print(" ");
+//      lcd.print(Back.Ping2);      
+//    }
+//    
+//    if (A){
+//      lcd.setCursor(0, 1);
+//      lcd.print("A  ");   
+//      lcd.print(Arm.Ping1);
+//      
+//      lcd.setCursor(7, 1);
+//      lcd.print(" "); 
+//      lcd.print(Arm.Ping2);
+//    }
+//    
+//    if (L){
+//      lcd.setCursor(0, 1);
+//      lcd.print("L  ");   
+//      lcd.print(Leg.Ping1);
+//      
+//      lcd.setCursor(7, 1);
+//      lcd.print(" "); 
+//      lcd.print(Leg.Ping2);
+//    }
   }
 
   void printColors_Grippers(int set){

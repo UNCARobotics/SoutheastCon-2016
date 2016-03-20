@@ -1,8 +1,8 @@
 #include <NewPing.h>
-#define PIN_T1 A5
-#define PIN_T2 A4
-#define PIN_T3 A3
-#define PIN_T4 A2
+#define PIN_T1 A5 //right onside
+#define PIN_T2 A4 //right outside 
+#define PIN_T3 A3 //left onside 
+#define PIN_T4 A2 //left outside 
 #define HIST_ARRAY_SIZE 5 //array of ping readings to average
 
 //initialize 2 pings
