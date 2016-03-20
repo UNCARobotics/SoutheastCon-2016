@@ -21,7 +21,7 @@ float Pings_History[2][HIST_ARRAY_SIZE];
 void setup (void)
 {
   Serial.begin(115200);
-  analogWrite(3, LOW); // LED's off
+  digitalWrite(17, LOW); // LED's off
   digitalWrite(3, LOW);
   // have to send on master in, *slave out*
   pinMode(MISO, OUTPUT);
@@ -87,7 +87,7 @@ void loop (void){
   }
     // if SPI not active, clear current command
   if (digitalRead (SS) == HIGH){
-      analogWrite(3, LOW);
+      digitalWrite(17, LOW);
       digitalWrite(3, LOW);
       command = 0;
   }
@@ -127,7 +127,7 @@ void sensePings() {
 }
 void ping_1_check(){
   if (Ping[0] > 0){
-   analogWrite(3, HIGH); //LED ON
+   digitalWrite(17, HIGH); //LED ON
   }
 }
 void ping_2_check(){
