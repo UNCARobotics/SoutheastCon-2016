@@ -131,6 +131,13 @@
   //Packages being recieved from IR slave, IR_package1 is the gripper's IRs, IR_package2 is the frame's IRs
    byte IR_package1 = 0; byte IR_package2 = 0;
 
+   // variables used in ramping up stepper motors
+   int Ramp_Delay = 0;
+   int Delayed_Steps = 100;
+   int Top_Speed = 10;    // a shorter delay in between toggling makes it move faster
+   int Bottom_Speed = 10000;  // a faster delay in between toggling makes it move slower
+   int place = 0;
+
    bool board = 0; //Which playing board we are on
   
 // End of Declarations//////////////////////////////////////////////////////////////////////////////////
@@ -1304,6 +1311,14 @@ void limitStep(int Stepper_SL, byte axis, byte Switch, bool spin, int stepSize){
   setModes(stepSize);
   digitalWrite(ArmMotor[Stepper_SL].Dir, spin); // sets direction of stepper
   digitalWrite(SLEEP, HIGH);  // enable stepper
+
+  // ramp up
+  while(  (place >= 0) && (place < (Delayed_Steps)) ){
+    Ramp_Delay -= ( (Bottom_Speed - Top_Speed)/ Delayed_Steps);
+    toggleStep(Ramp_Delay);
+    place++;
+  }
+  
   while(getLimits(axis, Switch) == HIGH){ // while limit switch is not pressed
     toggleStep(Stepper_SL, spin);
   }
