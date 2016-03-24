@@ -1315,7 +1315,7 @@ void Step(int Stepper_SL, byte axis, byte Switch, bool spin, int stepSize, int s
   setModes(stepSize);
   digitalWrite(ArmMotor[Stepper_SL].Dir, spin); // sets direction of stepper
 
-  while(getLimits(axis, Switch) == 0){    // while limit switch is not pressed
+  while(getLimits(axis, Switch) == HIGH){    // while limit switch is not pressed
     toggleStep(Stepper_SL, spin);
     countSteps++;
     if (countSteps > stepNum){ // if it has travelled the number of steps it was told to
