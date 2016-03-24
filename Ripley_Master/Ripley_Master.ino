@@ -138,6 +138,13 @@
    int Bottom_Speed = 10000;  // a faster delay in between toggling makes it move slower
    int place = 0;
 
+   // variables for delays between steps
+   int x_delay = 500;
+   int X_delay = 500;
+   int y_delay = 1000;
+   int Y_delay = 1000;
+   int Z_delay = 1000;  ////// change this once it is determined 
+
    bool board = 0; //Which playing board we are on
   
 // End of Declarations//////////////////////////////////////////////////////////////////////////////////
@@ -1152,25 +1159,25 @@ void Truck_Nav_dock(bool mirror){
      
 // ARM MOVEMENT FUNCTIONS TO BE CALLED BY MASTER //////////////////////////////////////////////////////////////////////
 void Arm_Start_Finish_Pos(){ // how arm will be set up for the start
-  limitStep(Z, 'Z','I', IN, 1);
-  limitStep(BIG_Y, 'Y', 'D', DOWN, 1); // OR SHOULD BIG_Y_DOWN BE HOME?? WHERE IS HOME FOR BIG_Y AND LIL_Y?
-  limitStep(LIL_Y, 'y', 'D', DOWN, 1);
-  limitStep(BIG_X, 'X', 'H', LEFT, 1); 
-  limitStep(LIL_X, 'x', 'H', LEFT, 1);
+  limitStep(Z, 'Z','I', IN, 1, Z_delay);
+  limitStep(BIG_Y, 'Y', 'D', DOWN, 1, Y_delay); // OR SHOULD BIG_Y_DOWN BE HOME?? WHERE IS HOME FOR BIG_Y AND LIL_Y?
+  limitStep(LIL_Y, 'y', 'D', DOWN, 1, y_delay);
+  limitStep(BIG_X, 'X', 'H', LEFT, 1, X_delay); 
+  limitStep(LIL_X, 'x', 'H', LEFT, 1, x_delay);
 }
 
 void Arm_Approach_Barge(bool Mirror){ // arm position for approaching the barges
-  limitStep(BIG_Y, 'Y', 'U', UP, 1);
-  limitStep(LIL_Y, 'y', 'U', UP, 1);
-  limitStep(Z, 'Z', 'O', OUT, 1);
+  limitStep(BIG_Y, 'Y', 'U', UP, 1, y_delay);
+  limitStep(LIL_Y, 'y', 'U', UP, 1, y_delay);
+  limitStep(Z, 'Z', 'O', OUT, 1, Z_delay);
     
   if(Mirror) { // side 1/A
-    limitStep(LIL_X, 'x', 'R', RIGHT, 1);
-    limitStep(BIG_X, 'X', 'H', RIGHT, 1); 
+    limitStep(LIL_X, 'x', 'R', RIGHT, 1, x_delay);
+    limitStep(BIG_X, 'X', 'H', RIGHT, 1, X_delay); 
   }
   else { // side 2/B
-    limitStep(LIL_X, 'x', 'L', LEFT, 1);
-    limitStep(BIG_X, 'X', 'H', LEFT, 1);
+    limitStep(LIL_X, 'x', 'L', LEFT, 1, x_delay);
+    limitStep(BIG_X, 'X', 'H', LEFT, 1, X_delay);
   }
 }
 
@@ -1179,11 +1186,11 @@ void Arm_Find_Blocks(byte axis, byte Switch){ // move the arm down until the IRs
 
    senseIRs();  // gets packages from slave                                               
   if(getLimits(axis, Switch) == 0 && IR_package1 == 11111111 && IR_package2 == 11111111 ){   // if IRs on the gripper and frame don't see anything
-    toggleStep(BIG_Y, DOWN);    // move BIG_Y down
+    toggleStep(BIG_Y, DOWN, Y_delay);    // move BIG_Y down
   } 
   
  else if(getLimits(axis, Switch) == 0 && IR_package1 == 11111111 && IR_package2 == 11111111 ){ // after moving BIG_Y if IRs still don't see anything move LIL_Y
-      toggleStep(LIL_Y, DOWN); // move LIL_Y down
+      toggleStep(LIL_Y, DOWN, y_delay); // move LIL_Y down
     }
 }
 
@@ -1191,147 +1198,155 @@ void IR_Hunt(bool Mirror){ //  moves LIL_X until the IRs on the frame and grippe
   senseIRs();  // gets packages from slave                                              
   if(Mirror) { // side 1/A
     while(IR_package1 != 192 && IR_package2 != 255){ // IRs don't see correct pattern
-      toggleStep(LIL_X, LEFT); // move left
+      toggleStep(LIL_X, LEFT, x_delay); // move left
     }
   }
   else { // side 2/B
    while(IR_package1 != 192 && IR_package2 != 255){ // IRs don't see correct pattern
-      toggleStep(LIL_X, RIGHT); // move right
+      toggleStep(LIL_X, RIGHT, x_delay); // move right
     }
   }
 }
 
 void Arm_Leave_Barge(){ // arm position when leaving all barges but second trip to barge A
   // retract arm a bit so it does not hit things when moving to next location
-  Step(BIG_Y, 'Y', 'U', UP, 1 , 800); // BIG_Y up a bit             //SEE HOW MANY STEPS ARE BEST!!!!
-  limitStep(Z, 'Z', 'I', IN, 1);
+  Step(BIG_Y, 'Y', 'U', UP, 1 , 800, Y_delay); // BIG_Y up a bit             //SEE HOW MANY STEPS ARE BEST!!!!
+  limitStep(Z, 'Z', 'I', IN, 1, Z_delay);
 }  
 
 void Arm_Boat_Pos(){ // arm position for dropping blocks in boat
-  limitStep(Z, 'Z', 'O', OUT, 1); // move Z to put arm over boat as far as possible
-  limitStep(BIG_Y, 'Y',  'D', DOWN, 1); // move BIG_Y down to be close to boat
+  limitStep(Z, 'Z', 'O', OUT, 1, Z_delay); // move Z to put arm over boat as far as possible
+  limitStep(BIG_Y, 'Y',  'D', DOWN, 1, Y_delay); // move BIG_Y down to be close to boat
 }  
 
 void Arm_Leave_Boat(){ // arm position for arm before leaving boat
-  limitStep(Z, 'Z', 'I', IN, 1); // move Z in
-  limitStep(BIG_Y, 'Y', 'U', UP, 1); // move BIG_Y UP
+  limitStep(Z, 'Z', 'I', IN, 1, Z_delay); // move Z in
+  limitStep(BIG_Y, 'Y', 'U', UP, 1, Y_delay); // move BIG_Y UP
 }
 
 void Arm_Truck_Pos(bool Mirror){ // position arm for going into truck
- limitStep(BIG_Y, 'Y', 'D', DOWN, 1); // BIG_Y down
- limitStep(LIL_Y, 'y', 'D', DOWN, 1); // LIL_Y down
+ limitStep(BIG_Y, 'Y', 'D', DOWN, 1, y_delay); // BIG_Y down
+ limitStep(LIL_Y, 'y', 'D', DOWN, 1, y_delay); // LIL_Y down
 
  if(Mirror){ // side is 1/A
-    limitStep(BIG_X, 'X', 'L', LEFT, 1);
-    limitStep(LIL_X, 'x', 'L', LEFT, 1);
+    limitStep(BIG_X, 'X', 'L', LEFT, 1, X_delay);
+    limitStep(LIL_X, 'x', 'L', LEFT, 1, x_delay);
  }
  else{ // side 2/B
-    limitStep(BIG_X, 'X', 'R', RIGHT, 1);
-    limitStep(LIL_X, 'x', 'R', RIGHT, 1);
+    limitStep(BIG_X, 'X', 'R', RIGHT, 1, X_delay);
+    limitStep(LIL_X, 'x', 'R', RIGHT, 1, x_delay);
  }
 }  
 
 void Arm_First_Train(){ // arm position for dropping blocks in first train
- limitStep(BIG_Y, 'Y', 'H', DOWN, 1);
- limitStep(LIL_Y, 'y', 'H', DOWN, 1);
- limitStep(Z, 'Z', 'O', OUT, 1);      
+ limitStep(BIG_Y, 'Y', 'H', DOWN, 1, Y_delay);
+ limitStep(LIL_Y, 'y', 'H', DOWN, 1, y_delay);
+ limitStep(Z, 'Z', 'O', OUT, 1, Z_delay);      
   }
 
 void Arm_Train_Down(bool Mirror){ // arm position for dropping blocks in trains moving toward boat 
   if(Mirror){ // side is 1/A
-    limitStep(LIL_X, 'x', 'L', LEFT, 1);
+    limitStep(LIL_X, 'x', 'L', LEFT, 1, x_delay);
   }
   else{ // side 2/B
-    limitStep(LIL_X, 'x', 'R', RIGHT, 1);
+    limitStep(LIL_X, 'x', 'R', RIGHT, 1, x_delay);
   }  
 }
 
 void Arm_Train_Back(bool Mirror){ // arm position for dropping blocks in trains moving away from boat 
   if(Mirror){ // side is 1/A
-    limitStep(LIL_X, 'x', 'R', RIGHT, 1);
+    limitStep(LIL_X, 'x', 'R', RIGHT, 1, x_delay);
   }
   else{ // side 2/B
-    limitStep(LIL_X, 'x', 'L', LEFT, 1);
+    limitStep(LIL_X, 'x', 'L', LEFT, 1, x_delay);
   }  
 }
 
 void Arm_Leave_Train(bool Mirror){ // arm position to set before leaving trains
-  limitStep(Z,'Z', 'I', IN, 1);
+  limitStep(Z,'Z', 'I', IN, 1, Z_delay);
   if(Mirror){ // side 1/A
-    limitStep(LIL_X, 'x', 'H', LEFT, 1);
+    limitStep(LIL_X, 'x', 'H', LEFT, 1, x_delay);
   }
   else{ // side 2/B
-    limitStep(LIL_X, 'x', 'H', RIGHT, 1);
+    limitStep(LIL_X, 'x', 'H', RIGHT, 1, x_delay);
   }
 }
 
 void Arm_Leave_BargeA(bool Mirror){ // arm position to set before leaving Barge A
-  Step(BIG_Y, 'Y', 'U', UP, 1 , 300); // BIG_Y up a bit             //SEE WHAT STEP SIZE IS BEST
+  Step(BIG_Y, 'Y', 'U', UP, 1 , 300, Y_delay); // BIG_Y up a bit             //SEE WHAT STEP SIZE IS BEST
 
   if(Mirror){ // side 1/A
     // move x to right
-    limitStep(BIG_X, 'X', 'R', RIGHT, 1);
-    limitStep(LIL_X, 'x', 'R', RIGHT, 1);
+    limitStep(BIG_X, 'X', 'R', RIGHT, 1, X_delay);
+    limitStep(LIL_X, 'x', 'R', RIGHT, 1, x_delay);
   }
 
   else{ // side 2/B
     // move x to left
-    limitStep(BIG_X, 'X', 'L', LEFT, 1);
-    limitStep(LIL_X, 'x', 'L', LEFT, 1);
+    limitStep(BIG_X, 'X', 'L', LEFT, 1, X_delay);
+    limitStep(LIL_X, 'x', 'L', LEFT, 1, x_delay);
   }
-  limitStep(Z, 'Z', 'I', IN, 1);
+  limitStep(Z, 'Z', 'I', IN, 1, Z_delay);
   
 }
 
 void Arm_BargeA_Reach_Spot(bool Mirror){ // arm position to set for reaching blocks on barge A behind rail cars
   if(Mirror){ // side 1/A
-    limitStep(BIG_X, 'X', 'L', LEFT, 1);
-    limitStep(LIL_X, 'x', 'L', LEFT, 1);
+    limitStep(BIG_X, 'X', 'L', LEFT, 1, X_delay);
+    limitStep(LIL_X, 'x', 'L', LEFT, 1, x_delay);
   }
   else{ // side 2/B
-    limitStep(BIG_X, 'X', 'R', RIGHT, 1);
-    limitStep(LIL_X, 'x', 'R', RIGHT, 1);
+    limitStep(BIG_X, 'X', 'R', RIGHT, 1, X_delay);
+    limitStep(LIL_X, 'x', 'R', RIGHT, 1, x_delay);
  
   }
 }
 
-////////////////// FUNCTIONS NESTED IN ARM MOVEMENT FUCNTIONS ///////////////////////////////////////////////
+// FUNCTIONS NESTED IN ARM MOVEMENT FUCNTIONS ///////////////////////////////////////////////
 
 void buttonStep(byte axis, byte Switch){ // movement of arm while master asks girpper if the buttons have been pressed
   // drop BIG_Y until limit, if needed drop LIL_Y until limit
   if(getLimits(axis, Switch) == 0 ){
-    toggleStep(BIG_Y, DOWN);
+    toggleStep(BIG_Y, DOWN, Y_delay);
   } 
  else if(getLimits(axis, Switch) == 0 ){
-      toggleStep(LIL_Y, DOWN);
+      toggleStep(LIL_Y, DOWN, y_delay);
     }
 }
 
-void limitStep(int Stepper_SL, byte axis, byte Switch, bool spin, int stepSize){   // moves the stepper until the limit switch is tripped
+void limitStep(int Stepper_SL, byte axis, byte Switch, bool spin, int stepSize, int step_delay){   // moves the stepper until the limit switch is tripped
   setModes(stepSize);
   digitalWrite(ArmMotor[Stepper_SL].Dir, spin); // sets direction of stepper
-  digitalWrite(SLEEP, HIGH);  // enable stepper
+  digitalWrite(ArmMotor[Stepper_SL].Sleep, HIGH);  // enable stepper
 
   // ramp up
   while(  (place >= 0) && (place < (Delayed_Steps)) ){
     Ramp_Delay -= ( (Bottom_Speed - Top_Speed)/ Delayed_Steps);
-    toggleStep(Ramp_Delay);
+    toggleStep(Stepper_SL, spin, Ramp_Delay);
     place++;
   }
   
   while(getLimits(axis, Switch) == HIGH){ // while limit switch is not pressed
-    toggleStep(Stepper_SL, spin);
+    toggleStep(Stepper_SL, spin, step_delay);
   }
-  digitalWrite(SLEEP,LOW)
+  digitalWrite(ArmMotor[Stepper_SL].Sleep,LOW);
 }
 
-void Step(int Stepper_SL, byte axis, byte Switch, bool spin, int stepSize, int stepNum){  // moves the stepper for certain amounts of steps unless limit switch is tripped
+void Step(int Stepper_SL, byte axis, byte Switch, bool spin, int stepSize, int stepNum, int step_delay){  // moves the stepper for certain amounts of steps unless limit switch is tripped
   int countSteps = 0; // counts number of steps travelled by stepper
   setModes(stepSize);
   digitalWrite(ArmMotor[Stepper_SL].Dir, spin); // sets direction of stepper
+  digitalWrite(ArmMotor[Stepper_SL].Sleep, HIGH);  // enable stepper
+
+   // ramp up
+  while(  (place >= 0) && (place < (Delayed_Steps)) ){
+    Ramp_Delay -= ( (Bottom_Speed - Top_Speed)/ Delayed_Steps);
+    toggleStep(Stepper_SL, spin, Ramp_Delay);
+    place++;
+  }
 
   while(getLimits(axis, Switch) == HIGH){    // while limit switch is not pressed
-    toggleStep(Stepper_SL, spin);
+    toggleStep(Stepper_SL, spin, step_delay);
     countSteps++;
     if (countSteps > stepNum){ // if it has travelled the number of steps it was told to
       break;
@@ -1364,13 +1379,13 @@ void setModes(int stepSize){ // sets the mode pins on the driver given the stepS
   digitalWrite(MODE_2, stepMode[2]);
 }
 
-void toggleStep(int Stepper_SL, bool spin){ // toggles the Step pin on the driver, moves stepper one step
+void toggleStep(int Stepper_SL, bool spin, int step_delay){ // toggles the Step pin on the driver, moves stepper one step
   // toggles on the rising edge
   digitalWrite(ArmMotor[Stepper_SL].Step, LOW);
   delayMicroseconds(500); // don't change this delay!!
   digitalWrite(ArmMotor[Stepper_SL].Step, HIGH);
 
-  delayMicroseconds(500);  // CHANGE LATER! we want this to be the smallest number possible that allows the motors to move
+  delayMicroseconds(step_delay);  // CHANGE LATER! we want this to be the smallest number possible that allows the motors to move
 }     
       
   // PRINTS ///////////////////////////////////////////////////////////////
