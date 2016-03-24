@@ -1303,9 +1303,11 @@ void buttonStep(byte axis, byte Switch){ // movement of arm while master asks gi
 void limitStep(int Stepper_SL, byte axis, byte Switch, bool spin, int stepSize){   // moves the stepper until the limit switch is tripped
   setModes(stepSize);
   digitalWrite(ArmMotor[Stepper_SL].Dir, spin); // sets direction of stepper
-  while(getLimits(axis, Switch) == 0){ // while limit switch is not pressed
+  digitalWrite(SLEEP, HIGH);  // enable stepper
+  while(getLimits(axis, Switch) == HIGH){ // while limit switch is not pressed
     toggleStep(Stepper_SL, spin);
   }
+  digitalWrite(SLEEP,LOW)
 }
 
 void Step(int Stepper_SL, byte axis, byte Switch, bool spin, int stepSize, int stepNum){  // moves the stepper for certain amounts of steps unless limit switch is tripped
@@ -1353,7 +1355,7 @@ void toggleStep(int Stepper_SL, bool spin){ // toggles the Step pin on the drive
   delayMicroseconds(500); // don't change this delay!!
   digitalWrite(ArmMotor[Stepper_SL].Step, HIGH);
 
-  delay(1);  // CHANGE LATER! we want this to be the smallest number possible that allows the motors to move
+  delayMicroseconds(500);  // CHANGE LATER! we want this to be the smallest number possible that allows the motors to move
 }     
       
   // PRINTS ///////////////////////////////////////////////////////////////

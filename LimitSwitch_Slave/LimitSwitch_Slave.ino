@@ -45,15 +45,23 @@ void setup() {
    lilx[0].pin = A4;  BIGX[0].pin = 3; lily[0].pin = 8; BIGY[0].pin = 5; Z[0].pin = A0; //A5 on master
    lilx[1].pin = A1;  BIGX[1].pin = 2; lily[1].pin = 9; BIGY[1].pin = 6; Z[1].pin = A2;  //19 on Master
    lilx[2].pin = A3;  BIGX[2].pin = A5; lily[2].pin = 4; BIGY[2].pin = 7; 
-  //set IR pins to inputs
+  //set IR pins to inputs and create internal pullup (limit switch is set initially to be high)
   for(int i = 0; i < 3; i++){
     pinMode(lilx[i].pin, INPUT);
     pinMode(BIGX[i].pin, INPUT);
     pinMode(lily[i].pin, INPUT);
     pinMode(BIGY[i].pin, INPUT);
+
+    digitalWrite(lilx[i].pin, HIGH);
+    digitalWrite(BIGX[i].pin, HIGH);
+    digitalWrite(lily[i].pin, HIGH);
+    digitalWrite(BIGY[i].pin, HIGH);
   }
   pinMode(Z[0].pin, INPUT);
   pinMode(Z[1].pin, INPUT);
+
+  digitalWrite(Z[0].pin, HIGH);
+  digitalWrite(Z[1].pin, HIGH);
 
 }
 
