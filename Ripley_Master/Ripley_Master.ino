@@ -1348,10 +1348,9 @@ void Step(int Stepper_SL, byte axis, byte Switch, bool spin, int stepSize, int s
   while(getLimits(axis, Switch) == HIGH){    // while limit switch is not pressed
     toggleStep(Stepper_SL, spin, step_delay);
     countSteps++;
-    if (countSteps > stepNum){ // if it has travelled the number of steps it was told to
-      break;
-    }
+    if ((countSteps-100) > stepNum) break;// if it has travelled the number of steps it was told to
   }   
+  digitalWrite(ArmMotor[Stepper_SL].Sleep, LOW);  // disable stepper
 }
 
 bool getLimits(byte axis, byte Switch){ // asks LimitSwitch_Slave for limit switch data
