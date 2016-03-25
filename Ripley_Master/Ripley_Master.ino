@@ -142,7 +142,7 @@
    int x_delay = 500;
    int X_delay = 500;
    int y_delay = 1000;
-   int Y_delay = 1000;
+   int Y_delay = 2000;
    int Z_delay = 1000;  ////// change this once it is determined 
 
    bool board = 0; //Which playing board we are on
