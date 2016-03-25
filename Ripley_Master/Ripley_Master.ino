@@ -483,8 +483,8 @@ struct trainCar box[2];
 
    //Grippers
    Gripperset Grippers[2] = {
-    {SS_AG1, SS_BG1, {}, {}, 0, 0},
-    {SS_AG2, SS_BG2, {}, {}, 0, 0}
+    {SS_AG1, SS_BG1, {0}, {0}, 0, 0},
+    {SS_AG2, SS_BG2, {0}, {0}, 0, 0}
    }; 
    
   //Sides
@@ -856,7 +856,7 @@ struct trainCar box[2];
     
     while(1){
     blockNum = (int)pixySense(d);    // store info about boxcars in struct and return #boxes seen
-    
+    led_Pixy(2,d);
     Arm.sensePings();         // run normal Ping>motor PID for arm side of bot 
     Ns_Tal = Arm.PD_T(8);
     Ns_R = Arm.PD_R();
@@ -877,7 +877,8 @@ struct trainCar box[2];
       Ns_Tfb = Pixy_PD() * d;  //use PD to slow backward motion until stopped
       Avg_ErT_fb = Front.getAvg_ErT();
         if(Avg_ErT_fb < 2 && Avg_ErT_al < 2 && Avg_ErR < 2){ //if there
-        gapCount = 0;  
+        gapCount = 0; 
+        led_Pixy(1, d); 
         stopDrive();
         return;
         }       
@@ -962,6 +963,11 @@ struct trainCar box[2];
       Correction = P_T*(Pixy_Error) + D_T*(Pixy_Error - Prev_Error);
       NewSpeed = BaseSpeed + Correction;
       return NewSpeed;
+  }
+  
+  void Pixy_ReadAndDrop(){
+    pixySense(1);
+    gripperCommand(box[0].color);
   }
   
  // TRUCK ////////////////////////////////////////////////////////////////////
@@ -1108,6 +1114,7 @@ void Truck_Nav_dock(bool mirror){
       delay(3000); // It will take a while to read all 6 colors on each Alpha
       Grippers[0].manageColors();
       //Grippers[1].manageColors();
+      led_BlockColors();
     }
     if (x=='h'){ // make sure the blocks are firmly gripped before moving away
       int holding = 0;
@@ -1468,7 +1475,8 @@ void toggleStep(int Stepper_SL, bool spin, int step_delay){ // toggles the Step 
     Serial.print("2: ");   
     Serial.println(Grippers[set].BetaColors[2]);
 }
-// led panel ///////////////////////////////////////////////
+
+// lED PANEL ////////////////////////////////////////////////////////////////////////////
 void led_Nav(bool n){
   int x[12] = {0,1,0,7,6,7,0,1,0,7,6,7};
   int y[12] = {0,0,1,0,0,1,7,7,6,7,7,6};
@@ -1552,19 +1560,121 @@ void led_Truckline(bool n){
     }
     else{ 
       for(int i=0; i<4; i++){
-      matrix.drawPixel(x[i], y[i], matrix.Color(0, 0 , 255));
-      matrix.show();
-      delay(250);
-      matrix.drawPixel(x[i], y[i], matrix.Color(0, 0 , 0));
-      matrix.show();
-      delay(250);
-      }
+        for(int j=0; j<12; j++){
+            matrix.drawPixel(x[j], y[j], matrix.Color(0, 0 , 255));
+            matrix.show();
+        }
+        delay(150);
+        for(int j=0; j<12; j++){
+            matrix.drawPixel(x[j], y[j], matrix.Color(0, 0 , 0));
+            matrix.show();
+        }
+        delay(150);
+        }
     }
   }
   
 }
 
-void led_Truck(int crushedIt){
+void led_Truck(int n){
+    int x[4] = {0,1,6,7};
   
+  if (n==0){
+    for(int i=0;i<4;i++){
+      matrix.drawFastVLine(x[i],0,8,matrix.Color(255, 0 , 0));
+    }
+    matrix.show(); 
+  }
+  if (n==1){
+    for(int i=0;i<4;i++){
+      matrix.drawFastVLine(x[i],0,8,matrix.Color(0, 0 , 255));
+    }
+    matrix.show(); 
+  }
+  if (n==2){
+    matrix.fillScreen(0);
+    matrix.show();
+    delay(500);
+    for(int k=0; k<3;k++){
+      int j = 8;
+      for(int i=0; i<4; i++){
+        matrix.drawRect(i,i,j,j,matrix.Color(0, 0 , 255));
+        j -= 2;
+        matrix.show(); 
+        delay(100);
+      }
+      matrix.fillScreen(0);
+      matrix.show();
+      delay(250);
+    }
+    led_Truckline(1);
+    led_BlockColors();
+    
+  }
+}
+void led_BlockColors(){
+ int y=6;
+ int x=2;
+ for(int k=0;k<2;k++){
+   for(int i=0; i<3; i++){ 
+     matrix.drawPixel(x, y, Al_Color(i,k));
+     matrix.show();
+     y--;
+   }
+   x++;
+   y=6;
+   for(int i=0; i<3; i++){ 
+     matrix.drawPixel(x, y, Be_Color(i,k));
+     matrix.show();
+     y--;
+   }
+   x++;
+   y=6;
+ }
 }
 
+
+uint16_t Al_Color(int i, int set){
+  if(Grippers[set].AlphaColors[i]==0) return matrix.Color(255, 0 , 0);
+  if(Grippers[set].AlphaColors[i]==1) return matrix.Color(255, 255 , 0);
+  if(Grippers[set].AlphaColors[i]==2) return matrix.Color(0, 0 , 255);
+  if(Grippers[set].AlphaColors[i]==3) return matrix.Color(0, 255 , 0);
+}
+uint16_t Be_Color(int i, int set){
+  if(Grippers[set].BetaColors[i]==0) return matrix.Color(255, 0 , 0);
+  if(Grippers[set].BetaColors[i]==1) return matrix.Color(255, 255 , 0);
+  if(Grippers[set].BetaColors[i]==2) return matrix.Color(0, 0 , 255);
+  if(Grippers[set].BetaColors[i]==3) return matrix.Color(0, 255 , 0);
+}
+
+void led_Pixy(int n, int d){
+  matrix.drawRect(0,0,2,7,matrix.Color(200, 200 , 200));
+  matrix.drawRect(6,0,2,7,matrix.Color(200, 200 , 200));
+  matrix.drawFastHLine(0,7,8,matrix.Color(200, 200 , 200));
+  matrix.drawFastHLine(2,3,4,matrix.Color(200, 200 , 200));
+  
+  if(n==1){
+    matrix.drawRect(2,0,2,3,matrix.Color(255, 0 , 0));
+    matrix.drawRect(4,0,2,3,matrix.Color(255, 0 , 0));
+    matrix.show();  
+  }
+  if(n==2){
+    if(d==1){
+      matrix.drawRect(2,0,2,3,led_pixyColor(0));
+      matrix.drawRect(4,0,2,3,led_pixyColor(1));
+      matrix.show();  
+    }
+    if(d==-1){
+      matrix.drawRect(2,0,2,3,led_pixyColor(1));
+      matrix.drawRect(4,0,2,3,led_pixyColor(0));
+      matrix.show();  
+    }
+  }
+}
+
+uint16_t led_pixyColor(int i){ 
+  if(box[i].color=='r') return matrix.Color(255, 0 , 0);
+  if(box[i].color=='y') return matrix.Color(255, 255 , 0);
+  if(box[i].color=='b') return matrix.Color(0, 0 , 255);
+  if(box[i].color=='g') return matrix.Color(0, 255 , 0);
+}  
