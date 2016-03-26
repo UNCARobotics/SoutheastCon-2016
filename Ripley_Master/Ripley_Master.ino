@@ -11,67 +11,13 @@
   #include <Adafruit_NeoMatrix.h>
   #include <Adafruit_NeoPixel.h>
   #include <SoftwareSerial.h>
+
+  #include "Macros.h"
+  #include "Gripperset.h"
+  #include "Sides.h"
   
-  #define LED_PIN 26
   const int TxPin = A0;
-  #define ER_ARRAY_SIZE 30
   
-  //Motor Drivers
-  #define M2_D2 2
-  #define M2_IN1 3
-  #define M2_IN2 4
-
-  #define M3_D2 5
-  #define M3_IN1 6
-  #define M3_IN2 7
-  
-  #define M0_D2 8
-  #define M0_IN1 9
-  #define M0_IN2 10
-  
-  #define M1_D2 11 
-  #define M1_IN1 12
-  #define M1_IN2 13
-  
-  #define EN_M0_M1 24
-  #define EN_M2_M3 22
-  
-  //Side Pings
-  #define SS_P2 30 //Front 
-  #define SS_P3 A2 //Back
-  #define SS_P4 A3 //Arm
-  #define SS_P5 32 //Leg
-  #define SS_T 40  //Truck Pings
-  #define SS_IR 38 //IR slave
-  #define SS_LS A6//Limit Switches
-  
- // Gripper 
-  #define SS_BG1 44
-  #define SS_BG2 46
-  #define SS_AG1 42 
-  #define SS_AG2 48 
-
-// Steppers
-  #define LIL_X 0
-  #define BIG_X 1
-  #define LIL_Y 2
-  #define BIG_Y 3
-  #define Z     4
-  
-  // directions of steppers
-  #define UP HIGH // for LIL_Y and BIG_Y
-  #define DOWN LOW // for LIL_Y and BIG_Y
-  #define RIGHT HIGH //  for LIL_X and BIG_X                // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
-  #define LEFT LOW // for LIL_X and BIG_X                   // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
-  #define OUT HIGH // for Z                                 // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
-  #define IN LOW  // for Z                                  // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
-
-  // Modes for step size
-  #define MODE_2  A14 // all drivers share Mode2, 1, 0, these hold the values for the step size
-  #define MODE_1  A13
-  #define MODE_0  A12
-  
-
   //checking millis for loop time correction
   long timer = 0;
   long ct = 1;
@@ -110,24 +56,24 @@
   // A  ||-3 0-||   L
   //        B
 
-    bool stepMode[3]; // used to set the modes
+  bool stepMode[3]; // used to set the modes
     
     // stepper motors
-    struct Steppers {
+  struct Steppers {
       int Dir; // pin on driver
       int Step; // pin on driver
       int Sleep; // pin on driver, active HIGH
       int Place; // current place of stepper, 0 will be left or down most position of lead screw
       int Max; // max is the number of steps on each lead screw, used for fault code inside toggleStep
-    };
+   };
     
-    Steppers ArmMotor[5] = { // sets pins for Dir, Step, and Sleep pins and intializes place and max
+   Steppers ArmMotor[5] = { // sets pins for Dir, Step, and Sleep pins and intializes place and max
       {23, 25, 27, 0, 0}, // LIL_X, 5 on PCB
       {29, 31, 33, 0, 0}, // BIG_X,, 4 on PCB
       {35, 37, 39, 0, 0},  // LIL_Y, 3 on PCB
       {41, 43, 45, 0, 0},  // BIG_Y, 2 on PCB
       {47, 49, A15, 0, 0}  //Z, 1 on PCB
-    };
+   };
   //Packages being recieved from IR slave, IR_package1 is the gripper's IRs, IR_package2 is the frame's IRs
    byte IR_package1 = 0; byte IR_package2 = 0;
 
@@ -148,322 +94,6 @@
    bool board = 0; //Which playing board we are on
   
 // End of Declarations//////////////////////////////////////////////////////////////////////////////////
-
-// GRIPPER CLASS DEFINITION //////////////////////////////////////////////////////////////////////////////////////
-  class Gripperset {
-   public: 
-    int SSL; //Slave select for the Alpha
-    int SS_B; //Slave select for it's Beta
-    int AlphaColors[3];  //Colors sent from Alpha to display
-    int BetaColors[3]; //Beta Colors sent from Alpha. These will be displayed and sent to beta
-    byte Alpha; //byte holding encoded colors for Alpha
-    byte Beta; //byte holding encoded colors for Beta
-    
-    byte transferAndWait (const byte what){  // function does SPI transfer and delays enough to complete
-         byte a = SPI.transfer (what);
-         delayMicroseconds (20);
-         return a;
-    } 
-      
-    int buttonCheck(){ // Looking for Button on Alpha, telling Beta///////////////////
-      byte checkA = 0; //message recieved from Alpha 
-      int touchdown = 0;  
-        digitalWrite(SSL, LOW);   
-          checkA =transferAndWait ('s');  //request button condition
-          checkA =transferAndWait ('s');  //recieve button condition 
-          checkA =transferAndWait ('s');  //recieve button condition 
-          //after frist transfer it could recieve on either transfer
-        digitalWrite(SSL, HIGH);
-        // Master will recieve B11110000, if button is pressed
-        //Next we let the Beta know if the button was pressed
-        
-        digitalWrite(SS_B, LOW);   
-          transferAndWait ('s'); //ready Beta for transfer
-          transferAndWait (checkA);  //send it Alpha button condition
-        digitalWrite(SS_B, HIGH);
-        
-        //check if the message meets condition 
-        touchdown = (checkA == B11110000) ? 1 : 0;
-        touchdown = 1;
-        return touchdown; 
-     }
-    
-    void senseColors(){ // Tell alpha to fire color sensors /////////////
-        digitalWrite(SSL, LOW);   
-          transferAndWait ('c');   //prep Alpha to take color readings
-          transferAndWait (0);    //take color readings 
-        digitalWrite(SSL, HIGH);
-      
-    }
-    
-    void manageColors(){ // Request color readings from Alpha ///////////
-       byte decoder = B00110000;
-       
-        digitalWrite(SSL, LOW);   
-          transferAndWait (1);  // request Alpha send packages
-          transferAndWait (2);  //Alpha preps package[0]
-          Alpha = transferAndWait (0); //recieve alpha colors, prep package[1]
-          Beta = transferAndWait (0); // recieve beta colors 
-        digitalWrite(SSL, HIGH); 
-
-        
-        for (int i=0;i<3;i++){ //unpack 3 alpha colors
-          for(int j=4;i<3;j-2){ //change bit shifting by 2 each time
-            //fill color array by viewing byte Alpha with the decoder mask
-           
-              AlphaColors[i] = (int)(Alpha & decoder); 
-              AlphaColors[i]>>=j; //shift decoded number until its on 2 bits
-              decoder >>= 2;  //shift the mask down to the next 2 bits
-              
-            }
-        }
-        decoder = B00110000; // reset decoder
-        
-        for (int i=0;i<3;i++){ // unpack beta colors as above
-          for(int j=4;i<3;j-2){
-            BetaColors[i] = Beta & decoder;
-            BetaColors[i]>>=j;
-            decoder >>= 2;
-            
-          }
-        }
-        //send beta colors to the beta slave
-        digitalWrite(SS_B, LOW);   
-          transferAndWait ('c'); //request to send beta its colors
-          transferAndWait (Beta); //beta gets colors 
-          transferAndWait (0); //tell beta to move on to managing colors and gripping
-        digitalWrite(SS_B, HIGH);  
-        
-    }
-    
-    int holdCheck(){
-      byte checkA = 0; byte checkB = 0;
-      int holding = 0;  
-        digitalWrite(SSL, LOW);   
-          checkA =transferAndWait ('h');  //request gripping condition from Alpha
-        digitalWrite(SSL, HIGH);
-        
-        digitalWrite(SS_B, LOW);   
-          checkB =transferAndWait ('h');  //request gripping condition from Beta 
-        digitalWrite(SS_B, HIGH);
-        
-        //then see if both Alpha and Beta send the "we have them" message
-        holding = ((checkA == B00001111) & (checkB == B00001111)) ? 1 : 0;
-        return holding;
-    }
-    
-    void dropColor(byte x){ // Transfer a color to the Beta and Alpha //////////////
-        digitalWrite(SS_B, LOW);   
-          transferAndWait (x);  //send color and prep beta
-          transferAndWait (0);  // beta executes drop
-        digitalWrite(SS_B, HIGH);
-        
-        digitalWrite(SSL, LOW);   
-          transferAndWait (x); //send color and prep alpha  
-          transferAndWait (0);  // alpha executes drop
-        digitalWrite(SSL, HIGH);
-        
-    }
-    
-    void dropAll(){ // Drops all Blocks (should be done before picking up new blocks)
-      digitalWrite(SS_B, LOW);   
-        transferAndWait ('a');  //prep beta
-        transferAndWait (0);  //execute
-      digitalWrite(SS_B, HIGH);
-      
-      digitalWrite(SSL, LOW);   
-        transferAndWait ('a');   //prep alpha
-        transferAndWait (0);    //execute
-      digitalWrite(SSL, HIGH);
-    }
-
-    void expand(){
-      digitalWrite(SS_B, LOW);   
-        transferAndWait ('E');  //prep beta
-        transferAndWait (0);  //execute
-      digitalWrite(SS_B, HIGH);
-      
-      digitalWrite(SSL, LOW);   
-        transferAndWait ('E');   //prep alpha
-        transferAndWait (0);    //execute
-      digitalWrite(SSL, HIGH);
-    }
-
-    void collapse(){
-      digitalWrite(SS_B, LOW);   
-        transferAndWait ('C');  //prep beta
-        transferAndWait (0);  //execute
-      digitalWrite(SS_B, HIGH);
-      
-      digitalWrite(SSL, LOW);   
-        transferAndWait ('C');   //prep alpha
-        transferAndWait (0);    //execute
-      digitalWrite(SSL, HIGH);
-    }
-    
-  };
-  
-  
-  // SIDE CLASS DEFINITION///////////////////////////////////////////////////////////////////////////
-  class Side { 
-    public:
-        
-        float P_T;      // PD constants
-        float D_T;
-        float P_R;
-        float D_R;
-        
-        // found values
-        float Ping1;  //for storing distance
-        float Ping2;
-        
-        float Error_T;
-        float Error_R;
-        
-        float Error_T_History[ER_ARRAY_SIZE];
-        float Error_R_History[ER_ARRAY_SIZE];
-        float Avg_ErT;
-        float Avg_ErR;
-
-        int SSL;
-        //////////////////////////////////////////////////
-                            //sense distance for each side
-        void sensePings() {                
-         digitalWrite(SSL, LOW);  // open communication (direct slave into interupt routine)
-           transferAndWait ('p');  // asks to turn pings on, and sets up the first byte transfer
-           transferAndWait (2);   //pings are on and first request is recieved  
-           //get leading bits, shift them left, get trailing bits, splice them together
-           Ping1 = ((int)transferAndWait(3) << 8) | (int)transferAndWait(4); 
-           Ping2 = ((int)transferAndWait(0) << 8) | (int)transferAndWait(0); 
-         digitalWrite(SSL, HIGH); // close communication, but pings will continue to read
-        }
-        
-        void senseTruckPings(byte x) {                 
-         digitalWrite(SSL, LOW);  // open communication (direct slave into interupt routine)
-         if (x = 'r'){
-           transferAndWait ('r');  // asks to turn pings on, and sets up the first byte transfer
-           transferAndWait (2);   //pings are on and first request is recieved  
-           //get leading bits, shift them left, get trailing bits, splice them together
-           Ping1 = ((int)transferAndWait(3) << 8) | (int)transferAndWait(4);  
-           Ping2 = ((int)transferAndWait(0) << 8) | (int)transferAndWait(0); 
-         }
-         if (x = 'l'){
-           transferAndWait ('l');  // asks to turn pings on, and sets up the first byte transfer
-           transferAndWait (6);   //pings are on and first request is recieved  
-           //get leading bits, shift them left, get trailing bits, splice them together
-           Ping1 = ((int)transferAndWait(7) << 8) | (int)transferAndWait(8);  
-           Ping2 = ((int)transferAndWait(0) << 8) | (int)transferAndWait(0); 
-         }
-         digitalWrite(SSL, HIGH); // close communication, but pings will continue to read
-        }
-        
-        void stopPings(){
-          digitalWrite(SSL, LOW);   
-          transferAndWait ('q');  // add command 
-          transferAndWait (2);  // add command
-          digitalWrite(SSL, HIGH);
-          
-        }
-       byte transferAndWait (const byte what){  // function does SPI transfer and delays enough to complete
-         byte a = SPI.transfer (what);
-         delayMicroseconds (20);
-         return a;
-      } 
-        
-        float PD_T(float setpoint){ // PD caculation for translation
-          float Prev_Error, Correction, NewSpeed;
-          int T = 1; // condition for averaging translation in Avg_error function
-          
-          Prev_Error = Error_T;
-          Error_T = (Ping1 + Ping2)/2 - setpoint; 
-          Avg_Error(Error_T, T);
-          Correction = P_T*(Error_T) + D_T*(Error_T - Prev_Error);
-          NewSpeed = BaseSpeed + Correction;
-         
-          return NewSpeed;
-        }
-
-        float Truck_PD(float setpoint){
-          float Prev_Error, Correction, NewSpeed;
-          int T = 1; // condition for averaging translation in Avg_error function
-          
-          Prev_Error = Error_T;
-          Error_T = (Ping2 - Ping1) - setpoint; 
-          Avg_Error(Error_T, T);
-          Correction = P_T*(Error_T) + D_T*(Error_T - Prev_Error);
-          NewSpeed = BaseSpeed + Correction;
-         
-          return NewSpeed;
-        }
-
-        float Truck_Arm_PD(bool mirror){
-          float setpoint = 400;
-          float Prev_Error, Correction, NewSpeed;
-          int T = 1; // condition for averaging translation in Avg_error function
-          
-          Prev_Error = Error_T;
-          if (mirror == 1) Error_T = Ping2 - setpoint; 
-          else Error_T = Ping1 - setpoint;
-          Avg_Error(Error_T, T);
-          Correction = P_T*(Error_T) + D_T*(Error_T - Prev_Error);
-          NewSpeed = BaseSpeed + Correction;
-         
-          return NewSpeed;
-        }
-    
-        float PD_R(){ // PD caculation for rotation
-          float Prev_Error, Correction, NewSpeed;
-          int R = 0;  // condition for averaging Rotation in Avg_error function
-    
-          Prev_Error = Error_R; 
-          Error_R = -(Ping1 - Ping2);
-          Avg_Error(Error_R, R);
-          Correction = P_R*(Error_R) + D_R*(Error_R - Prev_Error);
-          NewSpeed = BaseSpeed + Correction; 
-          return NewSpeed; //Positive is ClockWise
-        }
-
-
-        //This is for the exit conditions.
-        void Avg_Error(float Er, int type){    //Shifts the array of errors then adds the most recent to the 0 spot
-          if (type == 1){                      //Translation                                        
-            for(int i=ER_ARRAY_SIZE-1; i>0; i--){   //Shifts        
-              Error_T_History[i] = Error_T_History[i-1];
-            }
-            Error_T_History[0] = Er;
-                                               //Sums/w abs() and finds Average
-            for(int k=0;k<ER_ARRAY_SIZE;k++){
-              Avg_ErT += abs(Error_T_History[k]);
-            }
-            Avg_ErT = Avg_ErT/ER_ARRAY_SIZE;
-          }
-          else if(type==0){                   //Rotation
-            for(int i=ER_ARRAY_SIZE-1; i>0; i--){  //Shifts
-              Error_R_History[i] = Error_R_History[i-1];
-            }
-            Error_R_History[0] = Er;
-            for(int k=0;k<ER_ARRAY_SIZE;k++){       //Sums/w abs() and finds Average
-              Avg_ErR += abs(Error_T_History[k]);
-            }
-            Avg_ErR = Avg_ErR/ER_ARRAY_SIZE;
-          }
-        }
-
-        float getAvg_ErT(){     //needed to send Error Avg because PD function can't return 2 things
-          return Avg_ErT;
-        }
-        float getAvg_ErR(){     //needed to send Error Avg because PD function can't return 2 things
-          return Avg_ErR;
-        }
-        
-        void fill(){                //sets the error array very high
-          for(int i=0;i<ER_ARRAY_SIZE;i++){
-             Error_T_History[i]=100;
-             Error_R_History[i]=100;
-          }
-        }
-
-  };  
 
 // INITIALIZATIONS////////////////////////////////////////////////////////////////////////////////////
   
@@ -508,7 +138,6 @@ struct trainCar box[2];
 // SETUP///////////////////////////////////////////////////////////////////////////////////////////
   
   void setup() {
-    // for communicating with Processing
     Serial.begin(115200);
     
     //LCD
