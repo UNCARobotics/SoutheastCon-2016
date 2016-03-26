@@ -3,6 +3,7 @@
 
 #include "Arduino.h"
 
+float BaseSpeed = 0;
 
 class Side { 
     public:

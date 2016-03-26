@@ -2,7 +2,7 @@
 /* Corey Pullium && Fiona Popp / March 2016 / IEEE SoutheastCon
 
  */
-  // include the library code:
+  //Arduino's Libraries 
   #include <LiquidCrystal.h> 
   #include <NewPing.h>
   #include <SPI.h>  
@@ -12,43 +12,32 @@
   #include <Adafruit_NeoPixel.h>
   #include <SoftwareSerial.h>
 
+  //Ripley's Libraries
   #include "Macros.h"
   #include "Gripperset.h"
   #include "Sides.h"
-  
-  const int TxPin = A0;
-  
-  //checking millis for loop time correction
-  long timer = 0;
-  long ct = 1;
-  #define MAXIMUM 15
-  bool flagger;
 
-  int c = 0; //counter for led panel  
-  
-  // initialize the library with the numbers of the interface pins
-  
-  SoftwareSerial mySerial = SoftwareSerial(255, TxPin);
-
-  Pixy pixy;
-
-  struct trainCar{
+  const int TxPin = A0; //Pin for LCD screen
+  SoftwareSerial mySerial = SoftwareSerial(255, TxPin); //Create the LCD screen
+  //PIXY
+  Pixy pixy; // Create the Pixy
+  struct trainCar{  //Place to store what the train car data from Pixy
   byte color; 
   int xpos; 
   int width;
   };
-  
-  float BaseSpeed = 0;
-  
-  struct Motors {   //Motor Values   
+
+  //CHASSIS MOTORS
+  struct Motors {   //Place to store commands for the Motors  
     int Inv_Backward;  //high = backwards
     int Inv_Forward;      //High = forwards
     int Speed;
     
-    int Inv_Backward_Pin;  //high = backwards
+    int Inv_Backward_Pin;  
     int Inv_Forward_Pin; 
     int SpeedPin;
   };
+  
   
   //Motor numbers(Picture Below shows motor numbers);
   //        F
@@ -56,24 +45,16 @@
   // A  ||-3 0-||   L
   //        B
 
-  bool stepMode[3]; // used to set the modes
-    
-    // stepper motors
-  struct Steppers {
+  
+ // ARM
+  struct Steppers { //Place to store commands for the Arm Motors
       int Dir; // pin on driver
       int Step; // pin on driver
       int Sleep; // pin on driver, active HIGH
       int Place; // current place of stepper, 0 will be left or down most position of lead screw
       int Max; // max is the number of steps on each lead screw, used for fault code inside toggleStep
    };
-    
-   Steppers ArmMotor[5] = { // sets pins for Dir, Step, and Sleep pins and intializes place and max
-      {23, 25, 27, 0, 0}, // LIL_X, 5 on PCB
-      {29, 31, 33, 0, 0}, // BIG_X,, 4 on PCB
-      {35, 37, 39, 0, 0},  // LIL_Y, 3 on PCB
-      {41, 43, 45, 0, 0},  // BIG_Y, 2 on PCB
-      {47, 49, A15, 0, 0}  //Z, 1 on PCB
-   };
+   bool stepMode[3]; // used to set the Arm step Modes
   //Packages being recieved from IR slave, IR_package1 is the gripper's IRs, IR_package2 is the frame's IRs
    byte IR_package1 = 0; byte IR_package2 = 0;
 
@@ -91,7 +72,16 @@
    int Y_delay = 2000;
    int Z_delay = 1000;  ////// change this once it is determined 
 
-   bool board = 0; //Which playing board we are on
+  //Misc Global Variables
+  int c = 0; //counter for led panel 
+  bool board = 0; //Which playing board we are on
+  
+  //checking millis for loop time correction
+  long timer = 0;
+  long ct = 1;
+  #define MAXIMUM 15
+  bool flagger;
+
   
 // End of Declarations//////////////////////////////////////////////////////////////////////////////////
 
@@ -110,13 +100,7 @@ struct trainCar box[2];
     { LOW, HIGH, LOW, M2_IN1, M2_IN2, M2_D2},
     { LOW, HIGH, LOW, M3_IN1, M3_IN2, M3_D2}
   }; 
-
-   //Grippers
-   Gripperset Grippers[2] = {
-    {SS_AG1, SS_BG1, {0}, {0}, 0, 0},
-    {SS_AG2, SS_BG2, {0}, {0}, 0, 0}
-   }; 
-   
+    
   //Sides
                // PT,   DT,   PR,  DR
   Side Front     {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_P2};
@@ -129,6 +113,22 @@ struct trainCar box[2];
   Side Truck_Arm {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_P4};
   Side Truck_Leg {1,   4,   0.01,  0,  0, 0, 0, 0, {},{},0,0, SS_P5};
 
+  //Arm Motors
+  Steppers ArmMotor[5] = { // sets pins for Dir, Step, and Sleep pins and intializes place and max
+      {23, 25, 27, 0, 0}, // LIL_X, 5 on PCB
+      {29, 31, 33, 0, 0}, // BIG_X,, 4 on PCB
+      {35, 37, 39, 0, 0},  // LIL_Y, 3 on PCB
+      {41, 43, 45, 0, 0},  // BIG_Y, 2 on PCB
+      {47, 49, A15, 0, 0}  //Z, 1 on PCB
+   };
+
+   //Grippers
+   Gripperset Grippers[2] = {
+    {SS_AG1, SS_BG1, {0}, {0}, 0, 0},
+    {SS_AG2, SS_BG2, {0}, {0}, 0, 0}
+   }; 
+
+  //LED Panel
   Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(8, 8, LED_PIN,
   NEO_MATRIX_LEFT     + NEO_MATRIX_TOP +
   NEO_MATRIX_ROWS + NEO_MATRIX_PROGRESSIVE,
