@@ -55,10 +55,13 @@
   // directions of steppers
   #define UP HIGH // for LIL_Y and BIG_Y
   #define DOWN LOW // for LIL_Y and BIG_Y
-  #define RIGHT HIGH //  for LIL_X and BIG_X                // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
-  #define LEFT LOW // for LIL_X and BIG_X                   // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
-  #define OUT HIGH // for Z                                 // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
-  #define IN LOW  // for Z                                  // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
+  #define RIGHT_LIL_X LOW //  for LIL_X and BIG_X                
+  #define LEFT_LIL_X HIGH // for LIL_X and BIG_X                   
+  #define RIGHT_BIG_X HIGH // for BIG_Y
+  #define LEFT_BIG_X  LOW// for BIG_X
+  #define OUT HIGH // for Z                                 
+  #define IN LOW  // for Z                                  
+ 
 
   // Modes for step size
   #define MODE_2  A14 // all drivers share Mode2, 1, 0, these hold the values for the step size
