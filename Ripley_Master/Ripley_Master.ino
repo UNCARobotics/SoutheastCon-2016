@@ -140,7 +140,7 @@ struct trainCar box[2];
   void setup() {
     Serial.begin(115200);
     
-    //LCD
+    //LCD Begin (Still untested)....
     pinMode(TxPin, OUTPUT);
     digitalWrite(TxPin, HIGH);
     mySerial.begin(9600);
@@ -153,25 +153,29 @@ struct trainCar box[2];
     mySerial.write(212);                // Quarter note
     mySerial.write(220);                // A tone
     delay(3000);                        // Wait 3 seconds// Required delay
-    
+
+    //LED Panel setup
     matrix.begin();
+    matrix.fillScreen(0);
     matrix.show();
     matrix.setBrightness(20);
     
-
+    //Pixy
     pixy.init(); //Initiate the PIXY
-    
+
+    //Motor Driver setup
     pinMode (EN_M0_M1, OUTPUT);
     pinMode (EN_M2_M3, OUTPUT);
     digitalWrite(EN_M0_M1, HIGH);
     digitalWrite(EN_M2_M3, HIGH);
+    
     for(int i=0;i<4;i++){  //configure pin modes
-      
       pinMode (Motor[i].Inv_Backward_Pin, OUTPUT);
       pinMode (Motor[i].Inv_Forward_Pin, OUTPUT); 
       pinMode (Motor[i].SpeedPin, OUTPUT); 
     }
-      // configure pin modes
+    
+      // Arm setup
     pinMode(MODE_0,OUTPUT);
     pinMode(MODE_1,OUTPUT);
     pinMode(MODE_2,OUTPUT);
@@ -182,7 +186,7 @@ struct trainCar box[2];
       pinMode(ArmMotor[i].Sleep, OUTPUT);
     }
   
-    // initialize vars
+    // initialize setpsize
     digitalWrite(MODE_0, LOW);
     digitalWrite(MODE_1, LOW);
     digitalWrite(MODE_2, LOW);
@@ -255,11 +259,11 @@ struct trainCar box[2];
     float Ns_R = 0;   float Avg_ErR = 100;       //new speed; Avg Error; for all translation
     
     
-    fill_error_arrays();
+    fill_error_arrays(); //reset Error arrays
     
     while (1){ 
         //  timer = millis();
-      //Process_PD();
+      
       led_Nav(1); //turn on LED PANEL
       
       Ns_R = 0;
@@ -336,14 +340,15 @@ struct trainCar box[2];
 
     
 // ROTATION//////////////////////////////////////////////////////////////////////////////////////////
+
   void Rotate(int side, int Spin, int roTime){
     int RoSpeed = 0;
     float Avg_ErR;
+    
     c = 0; //counter for led panel  
     uint32_t lastlight = 0; //tracking time for led panel
     Serial.println("rotate");
 
-    lastlight = led_Rotate(Spin, lastlight); //LED PANEL
     Bump(Spin, roTime); // give the robot a kick in the right direction
 
     fill_error_arrays(); // resets error arrays
@@ -391,6 +396,7 @@ struct trainCar box[2];
   
   
 // SET;STOP;BUMP;FLIP////////////////////////////////////////////////////////////////////////////////////
+// Set Drive
   void setDrive(){
     digitalWrite(EN_M0_M1, HIGH);
     digitalWrite(EN_M2_M3, HIGH);
@@ -399,7 +405,7 @@ struct trainCar box[2];
       analogWrite(Motor[i].SpeedPin, Motor[i].Speed); 
     }
   }
-  
+// Stop Drive  
   void stopDrive(){
     digitalWrite(EN_M0_M1, LOW);
     digitalWrite(EN_M2_M3, LOW);
@@ -410,7 +416,7 @@ struct trainCar box[2];
     
       
   }
-  
+ // Bump 
   void Bump(int spin, int RoTime){
 
     int x;
@@ -440,7 +446,7 @@ struct trainCar box[2];
     delay(RoTime);  // rotate for a certian amount of time before stoping 
     stopDrive();
   }
-  
+ // Flip Motors 
   void flipMotors(){ 
     // if given a final negative speed, make the final speed positive and reverse the wheel direction for each motor
     for(int i=0;i<4;i++){
@@ -609,11 +615,11 @@ void  Truck_Nav_LineUp(bool mirror, float L){
   fill_error_arrays();
 
   while (1){
-    Ns_R = 0;
+    Ns_R = 0; 
     Avg_ErR = 0;
     led_Truckline(1);
   
-   if(mirror){
+   if(mirror){ 
     Back.sensePings();
     Ns_R = -Back.PD_R();
     Avg_ErR = Back.getAvg_ErR();
