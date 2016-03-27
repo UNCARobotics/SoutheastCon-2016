@@ -789,33 +789,85 @@ void Truck_Nav_dock(bool mirror){
 
 
    // ARM MOVEMENT FUNCTIONS TO BE CALLED BY MASTER //////////////////////////////////////////////////////////////////////
-void Arm_Start_Finish_Pos(){ // how arm will be set up for the start
+void Arm_Start_Pos(){ // how arm will be set up for the start
   limitStep(Z, 'Z','I', IN, 1, Z_DELAY);
-  limitStep(BIG_Y, 'Y', 'D', DOWN, 1, BIG_Y_DELAY); // OR SHOULD BIG_Y_DOWN BE HOME?? WHERE IS HOME FOR BIG_Y AND LIL_Y?
-  limitStep(LIL_Y, 'y', 'D', DOWN, 1, LIL_Y_DELAY);
+  limitStep(BIG_Y, 'Y', 'D', DOWN, 1, BIG_Y_DELAY);
+  // LIL_Y will be set by hand
   limitStep(BIG_X, 'X', 'H', LEFT_BIG_X, 1, BIG_X_DELAY); 
   limitStep(LIL_X, 'x', 'H', LEFT_LIL_X, 1, LIL_X_DELAY);
 }
 
-void Arm_Approach_Barge(bool Mirror){ // arm position for approaching the barges
-  limitStep(BIG_Y, 'Y', 'U', UP, 1, BIG_Y_DELAY);
-  limitStep(LIL_Y, 'y', 'U', UP, 1, LIL_Y_DELAY);
+void Arm_Finish_Pos(){
+  limitStep(Z, 'Z','I', IN, 1, Z_DELAY);
+  limitStep(BIG_Y, 'Y', 'D', DOWN, 1, BIG_Y_DELAY);
+  limitStep(LIL_Y, 'Y', 'U', UP, 1, LIL_Y_DELAY);
+  limitStep(BIG_X, 'X', 'H', LEFT_BIG_X, 1, BIG_X_DELAY); 
+  limitStep(LIL_X, 'x', 'H', LEFT_LIL_X, 1, LIL_X_DELAY);
+}
+
+void Arm_Z_Out(){
   limitStep(Z, 'Z', 'O', OUT, 1, Z_DELAY);
+}
+
+void Arm_Z_In(){
+  limitStep(Z, 'Z', 'I', IN, 1, Z_DELAY);
+}
+
+void Arm_Approach_Barge_C(bool Mirror){ // arm position for approaching barge C
+  limitStep(BIG_Y, 'Y', 'U', UP, 1, BIG_Y_DELAY);
     
   if(Mirror) { // side 1/A
     limitStep(LIL_X, 'x', 'R', RIGHT_LIL_X, 1, LIL_X_DELAY);
-    limitStep(BIG_X, 'X', 'H', RIGHT_BIG_X, 1, BIG_X_DELAY); 
   }
   else { // side 2/B
     limitStep(LIL_X, 'x', 'L', LEFT_LIL_X, 1, LIL_X_DELAY);
-    limitStep(BIG_X, 'X', 'H', LEFT_BIG_X, 1, BIG_X_DELAY);
   }
 }
 
-void Arm_Find_Blocks(byte axis, byte Switch){ // move the arm down until the IRs see blokcs
-  //drop BIG_Y until limit or IR, if needed drop LIL_Y until limit or IR
+void Arm_Approach_Barge_B(bool Mirror){ // arm position for approaching barge B
+   limitStep(BIG_Y, 'Y', 'U', UP, 1, BIG_Y_DELAY);
+   limitStep(LIL_Y, 'y', 'U', UP, 1, LIL_Y_DELAY);
+    
+  if(Mirror) { // side 1/A
+    limitStep(LIL_X, 'x', 'R', RIGHT_LIL_X, 1, LIL_X_DELAY);
+  }
+  else { // side 2/B
+    limitStep(LIL_X, 'x', 'L', LEFT_LIL_X, 1, LIL_X_DELAY);
+  }
+}
 
-   senseIRs();  // gets packages from slave                                               
+void Arm_Approach_Barge_A(bool Mirror){ // arm position for approaching barge A
+   limitStep(BIG_Y, 'Y', 'U', UP, 1, BIG_Y_DELAY);
+   limitStep(LIL_Y, 'y', 'U', UP, 1, LIL_Y_DELAY);
+}
+
+void Arm_Leave_Barge(){ // arm position when leaving all barges but second trip to barge A
+  // retract arm a bit so it does not hit things when moving to next location
+  Step(BIG_Y, 'Y', 'U', UP, 1 , 800, BIG_Y_DELAY); // BIG_Y up a bit             //SEE HOW MANY STEPS ARE BEST!!!!
+}  
+
+void Arm_Leave_BargeA(bool Mirror){ // arm position to set before leaving Barge A
+
+  if(Mirror){ // side 1/A
+    // move x to right
+    limitStep(BIG_X, 'X', 'H', RIGHT_BIG_X, 1, BIG_X_DELAY);
+    limitStep(LIL_X, 'x', 'H', RIGHT_LIL_X, 1, LIL_X_DELAY);
+  }
+
+  else{ // side 2/B
+    // move x to left
+    limitStep(BIG_X, 'X', 'H', LEFT_BIG_X, 1, BIG_X_DELAY);
+    limitStep(LIL_X, 'x', 'H', LEFT_LIL_X, 1, LIL_X_DELAY);
+  }
+
+  Arm_Leave_Barge(); // move BIG_Y up a bit
+  
+}
+
+void Arm_Find_Blocks(byte axis, byte Switch){ // move the arm down until the IRs see blocks
+  //drop BIG_Y until limit or IR, if needed drop LIL_Y until limit or IR
+   senseIRs();  // gets packages from slave 
+                                                 
   if(getLimits(axis, Switch) == 0 && IR_package1 == 11111111 && IR_package2 == 11111111 ){   // if IRs on the gripper and frame don't see anything
     toggleStep(BIG_Y, DOWN, BIG_Y_DELAY);    // move BIG_Y down
   } 
@@ -826,36 +878,42 @@ void Arm_Find_Blocks(byte axis, byte Switch){ // move the arm down until the IRs
 }
 
 void IR_Hunt(bool Mirror){ //  moves LIL_X until the IRs on the frame and grippers see the correct IR pattern
-  senseIRs();  // gets packages from slave                                              
+  senseIRs();  // gets packages from slave   
+                                             
   if(Mirror) { // side 1/A
     while(IR_package1 != 192 && IR_package2 != 255){ // IRs don't see correct pattern
-      toggleStep(LIL_X, LEFT_LIL_X, LIL_X_DELAY); // move left
+
+      if(getLimits('x', 'L') == HIGH){
+         toggleStep(LIL_X, LEFT_LIL_X, LIL_X_DELAY); // move LIL_X left
+      }
+      else {
+         toggleStep(BIG_X, LEFT_BIG_X, BIG_X_DELAY); // move BIG_X left
+      }
     }
   }
+  
   else { // side 2/B
    while(IR_package1 != 192 && IR_package2 != 255){ // IRs don't see correct pattern
-      toggleStep(LIL_X, RIGHT_LIL_X, LIL_X_DELAY); // move right
+   
+   if(getLimits('x', 'R') == HIGH){
+         toggleStep(LIL_X, RIGHT_LIL_X, LIL_X_DELAY); // move LIL_X right
+      }
+      else {
+         toggleStep(BIG_X, RIGHT_BIG_X, BIG_X_DELAY); // move BIG_X right
+      }
     }
   }
 }
 
-void Arm_Leave_Barge(){ // arm position when leaving all barges but second trip to barge A
-  // retract arm a bit so it does not hit things when moving to next location
-  Step(BIG_Y, 'Y', 'U', UP, 1 , 800, BIG_Y_DELAY); // BIG_Y up a bit             //SEE HOW MANY STEPS ARE BEST!!!!
-  limitStep(Z, 'Z', 'I', IN, 1, Z_DELAY);
-}  
-
-void Arm_Boat_Pos(){ // arm position for dropping blocks in boat
-  limitStep(Z, 'Z', 'O', OUT, 1, Z_DELAY); // move Z to put arm over boat as far as possible
+void Arm_Boat_Pos(){ // arm position for dropping blocks in boat, DO NOT USE UNLESS NECESSARY
   limitStep(BIG_Y, 'Y',  'D', DOWN, 1, BIG_Y_DELAY); // move BIG_Y down to be close to boat
 }  
 
-void Arm_Leave_Boat(){ // arm position for arm before leaving boat
-  limitStep(Z, 'Z', 'I', IN, 1, Z_DELAY); // move Z in
+void Arm_Leave_Boat(){ // arm position for arm before leaving boat, DO NOT USE UNLESS NECESSARY
   limitStep(BIG_Y, 'Y', 'U', UP, 1, BIG_Y_DELAY); // move BIG_Y UP
 }
 
-void Arm_Truck_Pos(bool Mirror){ // position arm for going into truck
+void Arm_Truck_Enter_Pos(bool Mirror){ // position arm for going into truck
  limitStep(BIG_Y, 'Y', 'D', DOWN, 1, BIG_Y_DELAY); // BIG_Y down
  limitStep(LIL_Y, 'y', 'D', DOWN, 1, LIL_Y_DELAY); // LIL_Y down
 
@@ -869,10 +927,22 @@ void Arm_Truck_Pos(bool Mirror){ // position arm for going into truck
  }
 }  
 
-void Arm_First_Train(){ // arm position for dropping blocks in first train
- limitStep(BIG_Y, 'Y', 'H', DOWN, 1, BIG_Y_DELAY);
- limitStep(LIL_Y, 'y', 'H', DOWN, 1, LIL_Y_DELAY);
- limitStep(Z, 'Z', 'O', OUT, 1, Z_DELAY);      
+void Arm_Truck_Leave_Pos(bool Mirror){ // position arm for leaving the truck
+ limitStep(BIG_Y, 'Y', 'U', UP, 1, BIG_Y_DELAY); // BIG_Y up
+ limitStep(LIL_Y, 'y', 'U', UP, 1, LIL_Y_DELAY); // LIL_Y up
+
+ if(Mirror){ // side is 1/A
+    limitStep(BIG_X, 'X', 'H', RIGHT_BIG_X, 1, BIG_X_DELAY);
+    limitStep(LIL_X, 'x', 'H', RIGHT_LIL_X, 1, LIL_X_DELAY);
+ }
+ else{ // side 2/B
+    limitStep(BIG_X, 'X', 'H', LEFT_BIG_X, 1, BIG_X_DELAY);
+    limitStep(LIL_X, 'x', 'H', LEFT_LIL_X, 1, LIL_X_DELAY);
+ }
+}
+
+void Arm_First_Train(){ // arm position for dropping blocks in first train // MIGHT NEED TO CHANGE TO LIL_Y
+ limitStep(BIG_Y, 'Y', 'H', DOWN, 1, BIG_Y_DELAY);  
   }
 
 void Arm_Train_Down(bool Mirror){ // arm position for dropping blocks in trains moving toward boat 
@@ -894,7 +964,6 @@ void Arm_Train_Back(bool Mirror){ // arm position for dropping blocks in trains 
 }
 
 void Arm_Leave_Train(bool Mirror){ // arm position to set before leaving trains
-  limitStep(Z,'Z', 'I', IN, 1, Z_DELAY);
   if(Mirror){ // side 1/A
     limitStep(LIL_X, 'x', 'H', LEFT_LIL_X, 1, LIL_X_DELAY);
   }
@@ -903,35 +972,6 @@ void Arm_Leave_Train(bool Mirror){ // arm position to set before leaving trains
   }
 }
 
-void Arm_Leave_BargeA(bool Mirror){ // arm position to set before leaving Barge A
-  Step(BIG_Y, 'Y', 'U', UP, 1 , 300, BIG_Y_DELAY); // BIG_Y up a bit             //SEE WHAT STEP SIZE IS BEST
-
-  if(Mirror){ // side 1/A
-    // move x to right
-    limitStep(BIG_X, 'X', 'R', RIGHT_BIG_X, 1, BIG_X_DELAY);
-    limitStep(LIL_X, 'x', 'R', RIGHT_LIL_X, 1, LIL_X_DELAY);
-  }
-
-  else{ // side 2/B
-    // move x to left
-    limitStep(BIG_X, 'X', 'L', LEFT_BIG_X, 1, BIG_X_DELAY);
-    limitStep(LIL_X, 'x', 'L', LEFT_LIL_X, 1, LIL_X_DELAY);
-  }
-  limitStep(Z, 'Z', 'I', IN, 1, Z_DELAY);
-  
-}
-
-void Arm_BargeA_Reach_Spot(bool Mirror){ // arm position to set for reaching blocks on barge A behind rail cars
-  if(Mirror){ // side 1/A
-    limitStep(BIG_X, 'X', 'L', LEFT_BIG_X, 1, BIG_X_DELAY);
-    limitStep(LIL_X, 'x', 'L', LEFT_LIL_X, 1, LIL_X_DELAY);
-  }
-  else{ // side 2/B
-    limitStep(BIG_X, 'X', 'R', RIGHT_BIG_X, 1, BIG_X_DELAY);
-    limitStep(LIL_X, 'x', 'R', RIGHT_LIL_X, 1, LIL_X_DELAY);
- 
-  }
-}
 
 // FUNCTIONS NESTED IN ARM MOVEMENT FUCNTIONS ///////////////////////////////////////////////
 
