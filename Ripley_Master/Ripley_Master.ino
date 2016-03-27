@@ -843,7 +843,14 @@ void Arm_Approach_Barge_A(bool Mirror){ // arm position for approaching barge A
 
 void Arm_Leave_Barge(){ // arm position when leaving all barges but second trip to barge A
   // retract arm a bit so it does not hit things when moving to next location
-  Step(BIG_Y, 'Y', 'U', UP, 1 , 800, BIG_Y_DELAY); // BIG_Y up a bit             //SEE HOW MANY STEPS ARE BEST!!!!
+            
+  if(getLimits('Y', 'U') == HIGH){ // if limit switch is not hit
+    Step(BIG_Y, 'Y', 'U', UP, 1, 800, BIG_Y_DELAY); // move BIG_Y up     //SEE HOW MANY STEPS ARE BEST!!!!
+  }
+  else {
+    Step(LIL_Y, 'y', 'U', UP, 1, 800, LIL_Y_DELAY); // move LIL_Y up      //SEE HOW MANY STEPS ARE BEST!!!!
+   }
+
 }  
 
 void Arm_Leave_BargeA(bool Mirror){ // arm position to set before leaving Barge A
@@ -869,12 +876,12 @@ void Arm_Find_Blocks(byte axis, byte Switch){ // move the arm down until the IRs
    senseIRs();  // gets packages from slave 
                                                  
   if(getLimits(axis, Switch) == 0 && IR_package1 == 11111111 && IR_package2 == 11111111 ){   // if IRs on the gripper and frame don't see anything
-    toggleStep(BIG_Y, DOWN, BIG_Y_DELAY);    // move BIG_Y down
+    limitStep(BIG_Y, 'Y', 'D', DOWN, 1, BIG_Y_DELAY); // move BIG_Y down
   } 
   
- else if(getLimits(axis, Switch) == 0 && IR_package1 == 11111111 && IR_package2 == 11111111 ){ // after moving BIG_Y if IRs still don't see anything move LIL_Y
-      toggleStep(LIL_Y, DOWN, LIL_Y_DELAY); // move LIL_Y down
-    }
+  else if(getLimits(axis, Switch) == 0 && IR_package1 == 11111111 && IR_package2 == 11111111 ){ // after moving BIG_Y if IRs still don't see anything move LIL_Y
+    limitStep(LIL_Y, 'y', 'D', DOWN, 1, LIL_Y_DELAY); // move LIL_Y down
+   }
 }
 
 void IR_Hunt(bool Mirror){ //  moves LIL_X until the IRs on the frame and grippers see the correct IR pattern
@@ -884,26 +891,26 @@ void IR_Hunt(bool Mirror){ //  moves LIL_X until the IRs on the frame and grippe
     while(IR_package1 != 192 && IR_package2 != 255){ // IRs don't see correct pattern
 
       if(getLimits('x', 'L') == HIGH){
-         toggleStep(LIL_X, LEFT_LIL_X, LIL_X_DELAY); // move LIL_X left
+         limitStep(LIL_X, 'x', 'L', LEFT_LIL_X, 1, LIL_X_DELAY); // move LIL_X left
       }
       else {
-         toggleStep(BIG_X, LEFT_BIG_X, BIG_X_DELAY); // move BIG_X left
+        limitStep(BIG_X, 'X', 'L', LEFT_BIG_X, 1, BIG_X_DELAY); // move BIG_X left
       }
     }
   }
   
   else { // side 2/B
-   while(IR_package1 != 192 && IR_package2 != 255){ // IRs don't see correct pattern
+    while(IR_package1 != 192 && IR_package2 != 255){ // IRs don't see correct pattern
    
-   if(getLimits('x', 'R') == HIGH){
-         toggleStep(LIL_X, RIGHT_LIL_X, LIL_X_DELAY); // move LIL_X right
+      if(getLimits('x', 'R') == HIGH){
+          limitStep(LIL_X, 'x', 'L', RIGHT_LIL_X, 1, LIL_X_DELAY); // move LIL_X right
       }
       else {
-         toggleStep(BIG_X, RIGHT_BIG_X, BIG_X_DELAY); // move BIG_X right
+        limitStep(BIG_X, 'X', 'L', RIGHT_BIG_X, 1, BIG_X_DELAY); // move BIG_X right
       }
     }
   }
-}
+}  
 
 void Arm_Boat_Pos(){ // arm position for dropping blocks in boat, DO NOT USE UNLESS NECESSARY
   limitStep(BIG_Y, 'Y',  'D', DOWN, 1, BIG_Y_DELAY); // move BIG_Y down to be close to boat
