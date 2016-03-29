@@ -1,7 +1,7 @@
 #include <NewPing.h>
 #define PIN_F1 5
 #define PIN_F2 6
-#define HIST_ARRAY_SIZE 5 //array of ping readings to average
+#define HIST_ARRAY_SIZE 1 //array of ping readings to average
 
 //initialize 2 pings
 NewPing sonar[2] = {
@@ -81,14 +81,14 @@ ISR (SPI_STC_vect)
 
 
 void loop (void){
-  if (on == 1){       //only if told, turn sensors on
+  //if (on == 1){       //only if told, turn sensors on
     
     sensePings();
-  }
+  
     // if SPI not active, clear current command
   if (digitalRead (SS) == HIGH){
-      digitalWrite(17, LOW);
-      digitalWrite(3, LOW);
+      //digitalWrite(17, LOW);
+      //digitalWrite(3, LOW);
       command = 0;
   }
 }  
@@ -102,10 +102,10 @@ void sensePings() {
     Avg_Ping[1] = 0;
     
     //take measurement 
-    Ping[0] = (sonar[0].ping()/29/2)*10;  
-    ping_1_check();
-    Ping[1] = (sonar[1].ping()/29/2)*10;
-    ping_2_check();
+    Ping[0] = (sonar[0].ping_median()/29/2)*10;  
+    //ping_1_check();
+    Ping[1] = (sonar[1].ping_median()/29/2)*10;
+    //ping_2_check();
     
     //shift new measurement into a history of measurments
     for(int i=0;i<2;i++){
