@@ -3,11 +3,9 @@
 #include "Adafruit_TCS34725.h" // for color sensor
 #include "Alpha.h"
 
-#define EXPAND_SET 60 //servo position for expanding the gripper outer sliders
-#define COLLAPSE_SET 120 //servo position for collapsing the gripper outer sliders
 
 //create an instance of a color sensor
-Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS34725_GAIN_1X); 
+Adafruit_TCS34725 tcs[6] = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS34725_GAIN_1X); 
 
 enum { //place holder for colors RED = int 0, Yellow = int 1, etc...makes reading code easier
   RED,
@@ -34,32 +32,32 @@ volatile int go = 0;
 
 volatile int expand = 0;
 volatile int collapse = 0;
+bool count = 0;
 
 bool button = HIGH; 
 byte package[2] = {0};
 
-int AllColors[6] = {0}; //colors of alpha grippers 0-2, beta colors 3-5
-int myColors[3] = {RED, RED, RED}; // personal colors gripper looks at to drop blocks
+int AllColors[6] = {BLUE, RED, BLUE, GREEN, GREEN, YELLOW}; //colors of alpha grippers 0-2, beta colors 3-5
+int myColors[3] = {BLUE, RED, BLUE}; // personal colors gripper looks at to drop blocks
 // init BLUE for competition (best odds)
 
 int lastButtonReading = HIGH;
 long lastDebounceTime = 0;  
 
 
-Servo assemblyServo;
   
 
 void setup() {
   Serial.begin(115200);
-  
+  Serial.println("Begin /////////////////////////");
+  delay(1000);
   for(int i=0; i<3; i++){
     Finger[i].initSensors();
   }
   
-  assemblyServo.attach(10);
   pinMode(A1, INPUT); //button
   pinMode(MISO, OUTPUT);
-
+  pinMode(SS, INPUT_PULLUP);
 
   // turn on SPI in slave mode
   SPCR |= _BV(SPE);
@@ -84,8 +82,9 @@ ISR (SPI_STC_vect)
   // Looking for Button///////////////////
   case 's':  
     command = c;
-    SPDR = (button == HIGH) ? B11110000 : 0; //if button, send flag
-    task = (button == HIGH) ? 1 : 0;  //if button, close read
+    //SPDR = (button == LOW) ? B11110000 : 0; //if button, send flag
+    SPDR = 10101010;
+    task = (button == LOW) ? 1 : 0;  //if button, close read
     break;
 
   // Take Color Readings and Create Packages //
@@ -114,20 +113,6 @@ ISR (SPI_STC_vect)
     SPDR = (go == 3) ? B00001111 : 0; //if all three are flagged, send 'ready'
     break; 
 
-// Tells the gripper assembly to expand //////////////////////////   
-  case 'E':
-    command = c;
-    SPDR = 0;
-    expand = 1;
-    break;  
-    
-// Tells the gripper assembly to collapse//////////////////////////  
-  case 'C':
-    command = c;
-    SPDR = 0;
-    collapse = 1;
-    break;  
-    
 // DROP RED /////////////////////////////////
   case 'r':      
     command = c;
@@ -205,62 +190,86 @@ ISR (SPI_STC_vect)
 // LOOP////////////////////////////////////////////////////////////////////////////
 
   void loop() {
-    
-
-    if (task == 0){  // Defalt when Grippers are not being used ////////////////////////
-      if (button == HIGH){
-        
-          int reading = digitalRead(A1); //take a button reading
-          // Debounce code
-          if (reading != lastButtonReading) lastDebounceTime = millis();
-          if ((millis() - lastDebounceTime) > 50){
-             if (button != reading){ 
-                button = reading;
-             }
-          }   
-          lastButtonReading = reading;
-          // End Debounce 
-      }
-      
-      //everything is reset     
-      for(int i=0;i<3;i++){ 
-      Finger[i].relax = 0;
-      Finger[i].gripServo.write(READY_POS); //need to reset after all the blocks are dropped
-      Finger[i].NewPos = 90;
-      Finger[i].grabbed = 0;
-      }
+    //Code for NCUR DEMO
       fill_arrays();
-      expand_collapse_Check();
-    }
-  
-    
-    if(task == 1){ // Close fingers and wait ///////////////////////
-     
       for(int i=0;i<3;i++){ 
-      Finger[i].CloseToRead();
+        Finger[i].gripServo.write(READY_POS);
       }
-      while(task == 1){
-        //Don't be Rowdy
-      } 
-    }
-    
-    
-    if(task == 2){ // PD-Controlled carrying blocks //////////////////////////////////////
-      
-      for(int i=0;i<3;i++){ 
-      Finger[i].holdBlocks();
-      button = LOW; // reset button
+      while(1){
+        if (button == HIGH){
+          
+            int reading = digitalRead(A1); //take a button reading
+            // Debounce code
+            if (reading != lastButtonReading) lastDebounceTime = millis();
+            if ((millis() - lastDebounceTime) > 50){
+               if (button != reading){ 
+                  button = reading;
+               }
+            }   
+            lastButtonReading = reading;
+            // End Debounce 
+        }
+        else{
+            for(int i=0;i<3;i++){
+              Finger[i].holdBlocks();
+            }  
+        }
       }
-      go = (Finger[0].grabbed + Finger[1].grabbed + Finger[2].grabbed); // how many blocks grabbed?
-      expand_collapse_Check();
-    }
-    
-    if(task == 3){ // Take Color Readings on ALPHA & BETA, and Package results
-      getColors();
-      task == 1; //After taking a reading, re-ready fingers and wait
-    }
+      //END NCUR DEMO
       
-  }
+//    if (task == 0){  // Defalt when Grippers are not being used ////////////////////////
+//      if (button == HIGH){
+//        
+//          int reading = digitalRead(A1); //take a button reading
+//          // Debounce code
+//          if (reading != lastButtonReading) lastDebounceTime = millis();
+//          if ((millis() - lastDebounceTime) > 50){
+//             if (button != reading){ 
+//                button = reading;
+//             }
+//          }   
+//          lastButtonReading = reading;
+//          // End Debounce 
+//      }
+//      
+//      //everything is reset     
+//      for(int i=0;i<3;i++){ 
+//      Finger[i].relax = 0;
+//      Finger[i].gripServo.write(READY_POS); //need to reset after all the blocks are dropped
+//      Finger[i].NewPos = 90;
+//      Finger[i].grabbed = 0;
+//      }
+//      fill_arrays();
+//    }
+//  
+//    
+//    if(task == 1){ // Close fingers and wait ///////////////////////
+//     
+//      
+//      Finger[1].CloseToRead();
+//      
+//      while(task == 1){
+//        //Don't be Rowdy
+//      } 
+//    }
+//    
+//    
+//    if(task == 2){ // PD-Controlled carrying blocks //////////////////////////////////////
+//      for(int i=0;i<3;i++){
+//        Serial.print(" "); Serial.print(i); Serial.print(":"); 
+//        Finger[i].holdBlocks();
+//      }
+//      Serial.println();
+//      button = LOW; // reset button
+//      go = (Finger[0].grabbed + Finger[1].grabbed + Finger[2].grabbed); // how many blocks grabbed?
+//    }
+//    
+//    if(task == 3){ // Take Color Readings on ALPHA & BETA, and Package results
+//      getColors();
+//      task = 1; //After taking a reading, re-ready fingers and wait
+//    }
+//      
+    }
 // END OF LOOP////////////////////////////////////////////////////////////////////////////////     
 void fill_arrays() { //function resets all arrays for each finger
   for(int i=0; i<3; i++){
@@ -269,8 +278,9 @@ void fill_arrays() { //function resets all arrays for each finger
 }
 
 // COLOR FUNCTIONS ///////////////////////////////////////////////////////////////////////////
+
 void getColors(){
-  
+  Finger[1].CloseToRead();
   readColors(); //Fills all colors array with new colors
   
   for(int i=0;i<3;i++){  //store colors for this gripper in exclusive array. 
@@ -288,37 +298,54 @@ void readColors() {
       uint16_t color; //Avg and final color
       uint16_t Color_Hist[COLOR_ARRAY_SIZE];
       int R = 0; int B = 0; int Y = 0; int G = 0; //Counters for readings
-      
+
       
       for(int j=0; j<6; j++){   //take readings for all six color sensors (3Alpha & 3BETA)
         tcaselect(j); //MUX select function 
         
         //fill array with new readings to get good avg
-          for (int i = 0; i < COLOR_ARRAY_SIZE; i++) { 
-            tcs.getRawData(&r, &g, &b, &c);
-            colorTemp = tcs.calculateColorTemperature(r, g, b);
+          for (int i = 0; i < COLOR_ARRAY_SIZE; i++) {
+            tcs[j].getRawData(&r, &g, &b, &c);
+            colorTemp = tcs[j].calculateColorTemperature(r, g, b);
             color = runningAvg(colorTemp, COLOR_ARRAY_SIZE, Color_Hist);
           }
 
         //calculate the mode of 7 blocks
           for (int i = 0; i < COLOR_ARRAY_SIZE; i++) { 
-            tcs.getRawData(&r, &g, &b, &c);
-            colorTemp = tcs.calculateColorTemperature(r, g, b);
+            tcs[j].getRawData(&r, &g, &b, &c);
+            colorTemp = tcs[j].calculateColorTemperature(r, g, b);
             color = runningAvg(colorTemp, COLOR_ARRAY_SIZE, Color_Hist);
-          
+            Serial.print(color); Serial.print(" ");
           // count readings as they come in  
             if ((color >= 20000)) R++;
             else if ((color >= 9500) && (color < 20000)) B++;
             else if ((color >= 3500) && (color < 9500)) G++;
             else if ((color > 1000) && ( color < 3500 )) Y++;
           }
+          Serial.println();      
+          Serial.print("R: "); Serial.print(R); Serial.print(" ");
+          Serial.print("B: "); Serial.print(B); Serial.print(" ");
+          Serial.print("G: "); Serial.print(G); Serial.print(" ");
+          Serial.print("Y: "); Serial.print(Y); Serial.print("... ");
+
+          if (B>=(COLOR_ARRAY_SIZE-5)) Serial.print("Blue Block ");
+ 
+          else if (G>=(COLOR_ARRAY_SIZE-5)) Serial.print("Green Block ");
+    
+          else if (Y>=(COLOR_ARRAY_SIZE-5)) Serial.print("Yellow Block ");
+    
+          else Serial.print("Red Block ");
 
           // make decision based on Mode of Avg readings
           if (B >= (COLOR_ARRAY_SIZE - 5)) AllColors[j] = BLUE; 
           else if (G >= (COLOR_ARRAY_SIZE - 5)) AllColors[j] = GREEN;
           else if (Y >= (COLOR_ARRAY_SIZE - 5)) AllColors[j] =YELLOW;
           else AllColors[j] = RED;
-        }
+          R=0; Y=0; B=0; G=0;
+          Serial.println(j);  
+          delay(1000);
+           }
+       
     } // All colors have been read
     
  float runningAvg(uint16_t Var, int Size, uint16_t *Array) {
@@ -342,24 +369,7 @@ void tcaselect(uint8_t i){ //MUX function
   Wire.write(1<<i);
   Wire.endTransmission();
 }
-// expanding and collapsing set ////////////////////////////////////////////
-void expand_collapse_Check(){
-       if (expand == 1){
-         for(int pos=COLLAPSE_SET;pos>=EXPAND_SET;pos--){
-            assemblyServo.write(pos);
-            delay(1);
-         }   
-       }
-       expand = 0;
-       if (collapse == 1){
-         for(int pos=EXPAND_SET;pos<=COLLAPSE_SET;pos++){
-            assemblyServo.write(pos);
-            delay(1);
-       } 
-       collapse = 0;
-      }
-  
-}
+
 
 
 

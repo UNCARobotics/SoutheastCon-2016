@@ -6,12 +6,12 @@
 #include <Adafruit_INA219.h> // for current sensing
 
 #define COLOR_ARRAY_SIZE 20  //array for averaging color
-#define CUR_ARRAY_SIZE 20    //array for averaging current
-#define POS_ARRAY_SIZE 50   //array for averaging Servo Position
-#define ER_ARRAY_SIZE 30  //array for averaging error
+#define CUR_ARRAY_SIZE 10    //array for averaging current
+#define POS_ARRAY_SIZE 10   //array for averaging Servo Position
+#define ER_ARRAY_SIZE 20  //array for averaging error
 
 #define READY_POS 100 //open and ready for picking up
-#define COLOR_READ_POS 40 //mostly closed to read the color sensor
+#define COLOR_READ_POS 65 //mostly closed to read the color sensor
 
 
 // GRIPPER DEFINITION///////////////////////////////////////////////////////////////////////////////////////////
@@ -50,6 +50,7 @@ class AlphaGripper {
       // get current from corresponding sensor
        current = ina219.getCurrent_mA();
        Avg_Cur = runningAvg(current, CUR_ARRAY_SIZE, current_history);
+       Serial.print(" Cur: "); Serial.print(Avg_Cur);
        return Avg_Cur;
       
     }
@@ -75,7 +76,7 @@ class AlphaGripper {
         relax = this->zeroCheck(NewPos); // check the zero case
       }
       else NewPos = 100; //if no block, open back up
-      return NewPos;
+      this->gripServo.write(NewPos);
     }
     
     float CloseToRead() {
