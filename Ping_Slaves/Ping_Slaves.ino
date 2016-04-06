@@ -82,7 +82,7 @@ ISR (SPI_STC_vect)
 
 
 void loop (void){
-<<<<<<< HEAD
+
 //  if (on == 1){       //only if told, turn sensors on
 //    
 //    sensePings();
@@ -106,7 +106,7 @@ Serial.println(Ping[0]);
 Serial.println(Ping[1]);
 delay(500);
 
-=======
+
   //if (on == 1){       //only if told, turn sensors on
     
     sensePings();
@@ -117,7 +117,7 @@ delay(500);
       //digitalWrite(3, LOW);
       command = 0;
   }
->>>>>>> origin/master
+
 }  
 
 
@@ -128,18 +128,12 @@ void sensePings() {
     Avg_Ping[0] = 0; 
     Avg_Ping[1] = 0;
     
-<<<<<<< HEAD
+
     
     Ping[0] = (sonar[0].ping()/29/2)*10;  
     //ping_1_check();
     Ping[1] = (sonar[1].ping()/29/2)*10;
-=======
-    //take measurement 
-    Ping[0] = (sonar[0].ping_median()/29/2)*10;  
-    //ping_1_check();
-    Ping[1] = (sonar[1].ping_median()/29/2)*10;
->>>>>>> origin/master
-    //ping_2_check();
+
     
     //shift new measurement into a history of measurments
     for(int i=0;i<2;i++){

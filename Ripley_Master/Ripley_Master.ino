@@ -801,6 +801,7 @@ void Arm_Start_Pos(){ // how arm will be set up for the start
   // LIL_Y will be set by hand
   limitStep(BIG_X, 'X', 'H', LEFT_BIG_X, 1, BIG_X_DELAY); 
   limitStep(LIL_X, 'x', 'H', LEFT_LIL_X, 1, LIL_X_DELAY);
+<<<<<<< HEAD
 }
 
 void Arm_Finish_Pos(){
@@ -819,6 +820,26 @@ void Arm_Z_In(){
   limitStep(Z, 'Z', 'I', IN, 1, Z_DELAY);
 }
 
+=======
+}
+
+void Arm_Finish_Pos(){
+  limitStep(Z, 'Z','I', IN, 1, Z_DELAY);
+  limitStep(BIG_Y, 'Y', 'D', DOWN, 1, BIG_Y_DELAY);
+  limitStep(LIL_Y, 'Y', 'U', UP, 1, LIL_Y_DELAY);
+  limitStep(BIG_X, 'X', 'H', LEFT_BIG_X, 1, BIG_X_DELAY); 
+  limitStep(LIL_X, 'x', 'H', LEFT_LIL_X, 1, LIL_X_DELAY);
+}
+
+void Arm_Z_Out(){
+  limitStep(Z, 'Z', 'O', OUT, 1, Z_DELAY);
+}
+
+void Arm_Z_In(){
+  limitStep(Z, 'Z', 'I', IN, 1, Z_DELAY);
+}
+
+>>>>>>> origin/master
 void Arm_Approach_Barge_C(bool Mirror){ // arm position for approaching barge C
   limitStep(BIG_Y, 'Y', 'U', UP, 1, BIG_Y_DELAY);
     
@@ -841,6 +862,7 @@ void Arm_Approach_Barge_B(bool Mirror){ // arm position for approaching barge B
     limitStep(LIL_X, 'x', 'L', LEFT_LIL_X, 1, LIL_X_DELAY);
   }
 }
+<<<<<<< HEAD
 
 void Arm_Approach_Barge_A(bool Mirror){ // arm position for approaching barge A
    limitStep(BIG_Y, 'Y', 'U', UP, 1, BIG_Y_DELAY);
@@ -877,6 +899,44 @@ void Arm_Leave_BargeA(bool Mirror){ // arm position to set before leaving Barge 
   
 }
 
+=======
+
+void Arm_Approach_Barge_A(bool Mirror){ // arm position for approaching barge A
+   limitStep(BIG_Y, 'Y', 'U', UP, 1, BIG_Y_DELAY);
+   limitStep(LIL_Y, 'y', 'U', UP, 1, LIL_Y_DELAY);
+}
+
+void Arm_Leave_Barge(){ // arm position when leaving all barges but second trip to barge A
+  // retract arm a bit so it does not hit things when moving to next location
+            
+  if(getLimits('Y', 'U') == HIGH){ // if limit switch is not hit
+    Step(BIG_Y, 'Y', 'U', UP, 1, 800, BIG_Y_DELAY); // move BIG_Y up     //SEE HOW MANY STEPS ARE BEST!!!!
+  }
+  else {
+    Step(LIL_Y, 'y', 'U', UP, 1, 800, LIL_Y_DELAY); // move LIL_Y up      //SEE HOW MANY STEPS ARE BEST!!!!
+   }
+
+}  
+
+void Arm_Leave_BargeA(bool Mirror){ // arm position to set before leaving Barge A
+
+  if(Mirror){ // side 1/A
+    // move x to right
+    limitStep(BIG_X, 'X', 'H', RIGHT_BIG_X, 1, BIG_X_DELAY);
+    limitStep(LIL_X, 'x', 'H', RIGHT_LIL_X, 1, LIL_X_DELAY);
+  }
+
+  else{ // side 2/B
+    // move x to left
+    limitStep(BIG_X, 'X', 'H', LEFT_BIG_X, 1, BIG_X_DELAY);
+    limitStep(LIL_X, 'x', 'H', LEFT_LIL_X, 1, LIL_X_DELAY);
+  }
+
+  Arm_Leave_Barge(); // move BIG_Y up a bit
+  
+}
+
+>>>>>>> origin/master
 void Arm_Find_Blocks(byte axis, byte Switch){ // move the arm down until the IRs see blocks
   //drop BIG_Y until limit or IR, if needed drop LIL_Y until limit or IR
    senseIRs();  // gets packages from slave 
