@@ -55,15 +55,32 @@
   // directions of steppers
   #define UP HIGH // for LIL_Y and BIG_Y
   #define DOWN LOW // for LIL_Y and BIG_Y
-  #define RIGHT HIGH //  for LIL_X and BIG_X                // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
-  #define LEFT LOW // for LIL_X and BIG_X                   // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
-  #define OUT HIGH // for Z                                 // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
-  #define IN LOW  // for Z                                  // CHECK IF HIGH AND LOW ARE ASSIGNED CORRECTLY!!!
+  #define RIGHT_LIL_X LOW //  for LIL_X and BIG_X                
+  #define LEFT_LIL_X HIGH // for LIL_X and BIG_X                   
+  #define RIGHT_BIG_X HIGH // for BIG_Y
+  #define LEFT_BIG_X  LOW// for BIG_X
+  #define OUT HIGH // for Z                                 
+  #define IN LOW  // for Z                                  
+ 
 
   // Modes for step size
   #define MODE_2  A14 // all drivers share Mode2, 1, 0, these hold the values for the step size
   #define MODE_1  A13
   #define MODE_0  A12
+
+ // Arm variables for delays between steps
+#define LIL_X_DELAY 500
+#define BIG_X_DELAY 500
+#define LIL_Y_DELAY 1000
+#define BIG_Y_DELAY 2000
+#define Z_DELAY 1000
+
+// Arm variables used in ramping up stepper motors
+#define DELAYED_STEPS 100
+#define TOP_SPEED 10 // a shorter delay in between toggling makes it move faster
+#define BOTTOM_SPEED 10000 // a faster delay in between toggling makes it move slower
+
+
   
 
 

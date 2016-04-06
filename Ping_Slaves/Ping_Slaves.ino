@@ -1,7 +1,7 @@
 #include <NewPing.h>
 #define PIN_F1 5
 #define PIN_F2 6
-#define HIST_ARRAY_SIZE 5 //array of ping readings to average
+#define HIST_ARRAY_SIZE 1 //array of ping readings to average
 
 //initialize 2 pings
 NewPing sonar[2] = {
@@ -24,13 +24,14 @@ void setup (void)
   digitalWrite(17, LOW); // LED's off
   digitalWrite(3, LOW);
   // have to send on master in, *slave out*
-  pinMode(MISO, OUTPUT);
+  
+  //pinMode(MISO, OUTPUT);
 
   // turn on SPI in slave mode
-  SPCR |= _BV(SPE);
+  //SPCR |= _BV(SPE);
 
   // turn on interrupts
-  SPCR |= _BV(SPIE);
+  //SPCR |= _BV(SPIE);
 
  Serial.println("Begin"); 
 }  // end of setup
@@ -81,16 +82,42 @@ ISR (SPI_STC_vect)
 
 
 void loop (void){
-  if (on == 1){       //only if told, turn sensors on
+<<<<<<< HEAD
+//  if (on == 1){       //only if told, turn sensors on
+//    
+//    sensePings();
+//  }
+//    // if SPI not active, clear current command
+//  if (digitalRead (SS) == HIGH){
+//      digitalWrite(17, LOW);
+//      digitalWrite(3, LOW);
+//      command = 0;
+//  }
+
+
+
+//  sensePings();
+//  Serial.println(Ping[0]);
+//  Serial.println(Ping[1]);
+//  Serial.println();
+//  delay(500);
+sensePings();
+Serial.println(Ping[0]);
+Serial.println(Ping[1]);
+delay(500);
+
+=======
+  //if (on == 1){       //only if told, turn sensors on
     
     sensePings();
-  }
+  
     // if SPI not active, clear current command
   if (digitalRead (SS) == HIGH){
-      digitalWrite(17, LOW);
-      digitalWrite(3, LOW);
+      //digitalWrite(17, LOW);
+      //digitalWrite(3, LOW);
       command = 0;
   }
+>>>>>>> origin/master
 }  
 
 
@@ -101,11 +128,18 @@ void sensePings() {
     Avg_Ping[0] = 0; 
     Avg_Ping[1] = 0;
     
-    //take measurement 
+<<<<<<< HEAD
+    
     Ping[0] = (sonar[0].ping()/29/2)*10;  
-    ping_1_check();
+    //ping_1_check();
     Ping[1] = (sonar[1].ping()/29/2)*10;
-    ping_2_check();
+=======
+    //take measurement 
+    Ping[0] = (sonar[0].ping_median()/29/2)*10;  
+    //ping_1_check();
+    Ping[1] = (sonar[1].ping_median()/29/2)*10;
+>>>>>>> origin/master
+    //ping_2_check();
     
     //shift new measurement into a history of measurments
     for(int i=0;i<2;i++){

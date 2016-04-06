@@ -2,9 +2,6 @@
 #include <Wire.h> // for current sensing
 #include "Beta.h"
 
-#define EXPAND_SET 60 //servo position for expanding the gripper outer sliders
-#define COLLAPSE_SET 120 //servo position for collapsing the gripper outer sliders
-
 enum {
   RED,
   YELLOW,
@@ -19,15 +16,14 @@ BetaGripper Finger[3] = {
   {0x44,   0,     9,   300,  0.001, 0, 0, {},      {},  0,   {},   90, 0}
 };
 
-Servo assemblyServo;
+
 
 volatile byte command = 0;   // stores value recieved from master, tells slave what case to run
 volatile byte colors = B11000000; //var recieves colors from master
 volatile int task = 0; //which functions should it be completing 
 volatile int dropColor; 
 volatile int go = 0; // flag for having a grip on the blocks
-volatile int expand = 0;
-volatile int collapse = 0;
+
 
 int myColors[3] = {RED, RED, RED};
 
@@ -38,7 +34,7 @@ void setup() {
     Finger[i].initSensors();
   }
 
-  assemblyServo.attach(10);
+ 
   pinMode(MISO, OUTPUT);
 
   // turn on SPI in slave mode
@@ -88,19 +84,6 @@ ISR (SPI_STC_vect)
     SPDR = (go == 3) ? B00001111 : 0;
     break;  
 
-// Tells the gripper assembly to expand //////////////////////////   
-  case 'E':
-    command = c;
-    SPDR = 0;
-    expand = 1;
-    break;  
-    
-// Tells the gripper assembly to collapse//////////////////////////  
-  case 'C':
-    command = c;
-    SPDR = 0;
-    collapse = 1;
-    break;  
 
  // DROP RED /////////////////////////////////
   case 'r':      
@@ -188,15 +171,15 @@ ISR (SPI_STC_vect)
       Finger[i].grabbed = 0;
       }
       fill_arrays();
-      expand_collapse_Check();
+     
     }
   
     
     if(task == 1){ //Close fingers, take color readings and wait/////////////////////////////
       
-      for(int i=0;i<3;i++){ 
-      Finger[i].CloseToRead();
-      }
+   
+      Finger[1].CloseToRead();
+
       while(task == 1){
         //Don't be Rowdy
       } 
@@ -209,7 +192,6 @@ ISR (SPI_STC_vect)
       Finger[i].holdBlocks();
       }
       go = (Finger[0].grabbed + Finger[1].grabbed + Finger[2].grabbed); // how many blocks grabbed?
-      expand_collapse_Check();
     }
     
     if(task == 3){ // Decode the color byte sent from master via ALpha, store in array ///////////
@@ -232,23 +214,7 @@ void fill_arrays() {
     Finger[i].fill();
   }
 }
-void expand_collapse_Check(){
-       if (expand == 1){
-         for(int pos=90;pos>EXPAND_SET;pos++){
-            assemblyServo.write(pos);
-            delay(1);
-         }   
-       }
-       expand = 0;
-       if (collapse == 1){
-         for(int pos=90;pos<COLLAPSE_SET;pos++){
-            assemblyServo.write(pos);
-            delay(1);
-       } 
-       collapse = 0;
-      }
-  
-}
+
 //  END///////////
 
 
