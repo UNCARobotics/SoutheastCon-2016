@@ -212,35 +212,8 @@ struct trainCar box[2];
     // variables to make calling Rotation function easier to read
     int CCW = 0, CW = 1;
     int F = 0, A = 1, B = 2, L = 3;
-
-    Front.sensePings();
-    Back.sensePings();
-    Arm.sensePings();
-    Leg.sensePings();
-    printReadings(0,0,0,0);
     
-//  printCountdown();
-//  
-//  
-//  Serial.println("Searching");
-//  gripperCommand('s');
-//  Serial.println("Touchdown");
-//  gripperCommand('c');
-//  printColors_Grippers(0);
-//  gripperCommand('h');
-//  Serial.print("H");
-//  delay(8000);
-//  gripperCommand('y');
-//  delay(2000);
-//  gripperCommand('g');
-//  delay(2000);
-//  gripperCommand('b');
-//  delay(2000);
-//  gripperCommand('r');
-//  delay(2000);
-//  gripperCommand('y');
-//  delay(2000);
-//  gripperCommand('a');
+  Nav(0,0,300,0);
 
   }
   
@@ -302,7 +275,7 @@ struct trainCar box[2];
       }
 
       if(Avg_ErT_fb < 2 && Avg_ErT_al < 2 && Avg_ErR/numParameters < 2){
-        printReadings(F,B,A,L);
+      //  printReadings(F,B,A,L);
         stopDrive();
         led_Nav(0);
         return;
@@ -314,7 +287,7 @@ struct trainCar box[2];
       Motor[3].Speed = Ns_Tfb + Ns_Tal + (Ns_R/numParameters);
     
       flipMotors();
-      printReadings(F,B,A,L); //print the Sonar readings to the LCD screen
+      //printReadings(F,B,A,L); //print the Sonar readings to the LCD screen
       setDrive(); //everything so far stored motor change data, now tell the motors to use that data
 //
 //      if(!(ct++%1000)){
@@ -656,7 +629,7 @@ void  Truck_Nav_LineUp(bool mirror, float L){
   Avg_ErR += Leg.getAvg_ErR();
 
   if(Avg_ErTrk < 2 && Avg_ErT_al < 2 && Avg_ErR/2 < 2){
-      printReadings(0,1,0,1);
+     // printReadings(0,1,0,1);
       stopDrive();
       Truck_L.stopPings();
       Truck_R.stopPings();
@@ -670,7 +643,7 @@ void  Truck_Nav_LineUp(bool mirror, float L){
     Motor[3].Speed = Ns_Trk + Ns_Tal + (Ns_R/2);
   
     flipMotors();
-    printReadings(0,1,0,1); //print the Sonar readings to the LCD screen
+   // printReadings(0,1,0,1); //print the Sonar readings to the LCD screen
     setDrive(); //everything so far stored motor change data, now tell the motors to use that data
   }  
 }
@@ -705,7 +678,7 @@ void Truck_Nav_dock(bool mirror){
     }
     
     if(Avg_ErT_al < 2){
-        printReadings(0,1,0,1);
+       // printReadings(0,1,0,1);
         stopDrive();
         Truck_L.stopPings();
         Truck_R.stopPings();
@@ -719,7 +692,7 @@ void Truck_Nav_dock(bool mirror){
       Motor[3].Speed = Ns_Tal + Ns_R + Ns_Trk;
     
       flipMotors();
-      printReadings(0,1,0,1); //print the Sonar readings to the LCD screen
+     // printReadings(0,1,0,1); //print the Sonar readings to the LCD screen
       setDrive(); //everything so far stored motor change data, now tell the motors to use that data
   }
 }
@@ -801,7 +774,6 @@ void Arm_Start_Pos(){ // how arm will be set up for the start
   // LIL_Y will be set by hand
   limitStep(BIG_X, 'X', 'H', LEFT_BIG_X, 1, BIG_X_DELAY); 
   limitStep(LIL_X, 'x', 'H', LEFT_LIL_X, 1, LIL_X_DELAY);
-<<<<<<< HEAD
 }
 
 void Arm_Finish_Pos(){
@@ -819,9 +791,9 @@ void Arm_Z_Out(){
 void Arm_Z_In(){
   limitStep(Z, 'Z', 'I', IN, 1, Z_DELAY);
 }
-
-=======
 }
+
+
 
 void Arm_Finish_Pos(){
   limitStep(Z, 'Z','I', IN, 1, Z_DELAY);
@@ -839,7 +811,7 @@ void Arm_Z_In(){
   limitStep(Z, 'Z', 'I', IN, 1, Z_DELAY);
 }
 
->>>>>>> origin/master
+
 void Arm_Approach_Barge_C(bool Mirror){ // arm position for approaching barge C
   limitStep(BIG_Y, 'Y', 'U', UP, 1, BIG_Y_DELAY);
     
@@ -862,7 +834,7 @@ void Arm_Approach_Barge_B(bool Mirror){ // arm position for approaching barge B
     limitStep(LIL_X, 'x', 'L', LEFT_LIL_X, 1, LIL_X_DELAY);
   }
 }
-<<<<<<< HEAD
+
 
 void Arm_Approach_Barge_A(bool Mirror){ // arm position for approaching barge A
    limitStep(BIG_Y, 'Y', 'U', UP, 1, BIG_Y_DELAY);
@@ -899,7 +871,7 @@ void Arm_Leave_BargeA(bool Mirror){ // arm position to set before leaving Barge 
   
 }
 
-=======
+
 
 void Arm_Approach_Barge_A(bool Mirror){ // arm position for approaching barge A
    limitStep(BIG_Y, 'Y', 'U', UP, 1, BIG_Y_DELAY);
@@ -936,7 +908,6 @@ void Arm_Leave_BargeA(bool Mirror){ // arm position to set before leaving Barge 
   
 }
 
->>>>>>> origin/master
 void Arm_Find_Blocks(byte axis, byte Switch){ // move the arm down until the IRs see blocks
   //drop BIG_Y until limit or IR, if needed drop LIL_Y until limit or IR
    senseIRs();  // gets packages from slave 
@@ -1303,6 +1274,7 @@ uint32_t led_Rotate(bool dir, uint32_t lastlight){
   matrix.show();
   return lastlight;
 }
+
 void led_Truckline(bool n){
   int x[12] = {0,1,0,7,6,7,0,1,0,7,6,7};
   int y[12] = {0,0,1,0,0,1,7,7,6,7,7,6};
